@@ -1,7 +1,3 @@
-Absolutely! Here's a comprehensive, professional-grade **README documentation** for your **GroupifyAssist** backend project using FastAPI + SQLModel. You can paste this directly into your GitHub `README.md` and customize it later as features evolve.
-
----
-
 # 📦 GroupifyAssist – Smart Grouping and Selection Tool
 
 **GroupifyAssist** is a smart system designed to help organizers (hosts) group or select individuals intelligently based on randomization or specified criteria (e.g. gender, skill level). This system reduces bias, improves fairness, and saves time during group management and participant selection tasks.
