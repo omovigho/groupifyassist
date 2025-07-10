@@ -69,7 +69,7 @@ groupifyassist/
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/omovigho/groupifyassist.git
+git clone https://github.com/yourusername/groupifyassist.git
 cd groupifyassist
 ```
 
@@ -85,13 +85,13 @@ pipenv shell
 pip install -r requirements.txt
 ```
 
-### 4. Run Database Migrations
+### 5. Run Database Migrations
 
 ```bash
 alembic upgrade head
 ```
 
-### 5. Start the Server
+### 6. Start the Server
 
 ```bash
 uvicorn app.main:app --reload
