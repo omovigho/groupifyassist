@@ -1,9 +1,11 @@
 import sys
+import os
+#import app.models
+
 from pathlib import Path
 from sqlmodel import SQLModel
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 from sqlmodel.ext.asyncio.session import AsyncSession
-import os
 from dotenv import load_dotenv
 from typing import Annotated, AsyncGenerator
 from fastapi import Depends
@@ -11,8 +13,7 @@ from fastapi import Depends
 # Add root directory to sys.path
 sys.path.append(str(Path(__file__).resolve().parents[2]))
 
-# Now safely import models
-import app.models  # ✅ This will now work
+# Now safely import models  
 
 # Load env
 current_dir = Path(__file__).parent
@@ -28,7 +29,6 @@ async def get_session() -> AsyncGenerator[AsyncSession, None]:
         yield session
 
 async def init_db():
-    print(f"Connecting to database at {DATABASE_URL}")
     async with engine.begin() as conn:
         await conn.run_sync(SQLModel.metadata.create_all)
 
