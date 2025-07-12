@@ -4,6 +4,7 @@ from sqlmodel import SQLModel, Field
 
 class PreferentialGroupingRule(SQLModel, table=True):
     __tablename__ = "preferential_grouping_rules"
+    __table_args__ = {"extend_existing": True}
 
     id: Optional[int] = Field(default=None, primary_key=True)
     group_session_id: int = Field(foreign_key="group_sessions.id")
