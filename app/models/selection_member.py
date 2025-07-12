@@ -6,7 +6,8 @@ from datetime import datetime
 
 class SelectionMember(SQLModel, table=True):
     __tablename__ = "selection_members"
-
+    __table_args__ = {"extend_existing": True}
+    
     id: Optional[int] = Field(default=None, primary_key=True)
     selection_session_id: int = Field(foreign_key="selection_sessions.id")
     attributes: dict = Field(sa_column=Column(JSONB))
