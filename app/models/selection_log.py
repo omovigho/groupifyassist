@@ -4,6 +4,7 @@ from datetime import datetime
 
 class SelectionLog(SQLModel, table=True):
     __tablename__ = "selection_logs"
+    __table_args__ = {"extend_existing": True}
 
     id: Optional[int] = Field(default=None, primary_key=True)
     selection_session_id: int = Field(foreign_key="selection_sessions.id")
