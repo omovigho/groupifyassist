@@ -5,6 +5,7 @@ from sqlalchemy import Column
 
 class FieldDefinition(SQLModel, table=True):
     __tablename__ = "field_definitions"
+    __table_args__ = {"extend_existing": True}
 
     id: Optional[int] = Field(default=None, primary_key=True)
     session_id: int = Field(foreign_key="group_sessions.id")
