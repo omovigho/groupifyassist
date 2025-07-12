@@ -6,7 +6,8 @@ from datetime import datetime
 
 class User(SQLModel, table=True):
     __tablename__ = "users"
-
+    __table_args__ = {"extend_existing": True}
+    
     id: Optional[int] = Field(default=None, primary_key=True)
     email: str = Field(index=True, unique=True, nullable=False)
     password: str
