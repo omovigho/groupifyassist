@@ -4,3 +4,9 @@ sqlalchemy
 sqlmodel
 alembic
 python-dotenv
+passlib
+upstash_redis
+bcrypt
+passlib[bcrypt]
+python-jose[cryptography]
+APScheduler
