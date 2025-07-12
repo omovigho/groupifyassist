@@ -6,6 +6,7 @@ from datetime import datetime
 
 class GroupMember(SQLModel, table=True):
     __tablename__ = "group_members"
+    __table_args__ = {"extend_existing": True}
 
     id: Optional[int] = Field(default=None, primary_key=True)
     group_session_id: int = Field(foreign_key="group_sessions.id")
