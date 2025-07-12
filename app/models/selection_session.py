@@ -4,7 +4,8 @@ from datetime import datetime
 
 class SelectionSession(SQLModel, table=True):
     __tablename__ = "selection_sessions"
-
+    __table_args__ = {"extend_existing": True}
+    
     id: Optional[int] = Field(default=None, primary_key=True)
     title: str
     description: str
