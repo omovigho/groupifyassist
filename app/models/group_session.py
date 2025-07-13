@@ -9,11 +9,10 @@ class GroupSession(SQLModel, table=True):
     
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str
-    title: str
     description: str
-    code: str = Field(index=True, unique=True)
+    code: int = Field(foreign_key="access_codes.id")
     host_id: int = Field(foreign_key="users.id")
     max_group_size: int
     reveal_immediately: bool = Field(default=False)
     
-    status: str = Field(default="active")  # values: active, used, expired
+    status: str = Field(default="active")  # values: active, expired
