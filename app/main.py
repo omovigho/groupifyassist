@@ -19,7 +19,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="GroupifyAssist API", lifespan=lifespan)
 # Register Routers
-app.include_router(auth.router, prefix="/auth", tags=["Authentication"])
+app.include_router(auth.router, tags=["Authentication"])
 app.include_router(group_session.router)
 '''app.include_router(session.router, prefix="/sessions", tags=["Sessions"])
 app.include_router(member.router, prefix="/members", tags=["Members"])
