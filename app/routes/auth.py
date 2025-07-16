@@ -14,11 +14,11 @@ from app.core.security import verify_password, create_access_token
 from app.schemas.auth import LoginRequest
 
 
-router = APIRouter(prefix="/auth", tags=["Authentication"])
+router = APIRouter(prefix="/api/user", tags=["Authentication"])
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-@router.post("/register", response_model=RegisterResponse)
+'''@router.post("/sign-up", response_model=RegisterResponse)
 async def register_user(request: RegisterRequest, session: SessionDep):
     existing = await session.exec(select(User).where(User.email == request.email))
     if existing.first():
@@ -35,10 +35,10 @@ async def register_user(request: RegisterRequest, session: SessionDep):
     session.add(user)
     await session.commit()
     await session.refresh(user)
-    return {"message": "Registration successful"}
+    return {"message": "Registration successful"}'''
 
 
-@router.post("/auth/request-verification", )
+@router.post("/sign-up", )
 async def request_email_verification(request: RegisterRequest, session: SessionDep):
     email = request.email
     existing = await session.exec(select(User).where(User.email == request.email))
@@ -70,7 +70,7 @@ async def request_email_verification(request: RegisterRequest, session: SessionD
     return {"message": "Verification code sent to your email"}
 
 
-@router.post("/auth/verify")
+@router.post("/email-confirmation")
 async def verify_user(request: RegistrationVerificationRequest, session: SessionDep):
     stored_code = get_cache(f"verify_code_{request.email}")
     if stored_code != request.code:
