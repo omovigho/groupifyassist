@@ -8,7 +8,7 @@ from app.core.database import get_session, SessionDep
 from app.models.user import User
 
 
-router = APIRouter(prefix="/groups", tags=["Grouping"])
+router = APIRouter(prefix="/api/groups", tags=["Grouping"])
 
 
 @router.post("/create", response_model=GroupSessionRead)
