@@ -100,20 +100,19 @@ async def create_group_session(
     )
     session.add(access_code)
     await session.flush()  # get access_code.id
-
     # Create the group session
     group_session = GroupSession(
         name=data.name,
         description=data.description,
-        access_code_id=access_code.id,
+        code_id=access_code.id,
         host_id=host_id,
         max_group_size=data.max,
         reveal_immediately=data.reveal,
         status="active",
+        # Note: The model doesn't have created_at field, we'll add it in the response
     )
     session.add(group_session)
     await session.flush()  # get group_session.id
-
     # Create the individual named groups
     for group_name in data.group_names:
         group = Group(name=group_name, session_id=group_session.id)
@@ -142,32 +141,16 @@ async def create_group_session(
 
     await session.commit()
     await session.refresh(group_session)
-    return group_session
-
-
-# Sample JSON payload to test:
-'''
-POST /groups/create
-Authorization: Bearer <your_token>
-
-{
-  "name": "Orientation Grouping",
-  "title": "Freshers Welcome",
-  "description": "Divide new students into discussion groups",
-  "max": 6,
-  "reveal": true,
-  "expires_in": 180,
-  "group_names": ["Group A", "Group B", "Group C"],
-  "fields": [
-    {"field_key": "fullname", "label": "Full Name", "data_type": "string"},
-    {"field_key": "gender", "label": "Gender", "data_type": "enum", "options": {"values": ["male", "female"]}},
-    {"field_key": "age", "label": "Age", "data_type": "number"},
-    {"field_key": "department", "label": "Department", "data_type": "string"}
-  ]
-}
-'''
-
-# Make sure your models include:
-# - `Group` model with name, session_id
-# - `FieldDefinition` model with field_key, label, data_type, etc.
-# - `GroupSession` model using access_code_id not code
+    
+    # Create a response object that matches the GroupSessionRead schema
+    response = GroupSessionRead(
+        id=group_session.id,
+        name=group_session.name,
+        description=group_session.description,
+        access_code=access_code.code,  # Map code to access_code
+        max=group_session.max_group_size,   # Map max_group_size to max
+        reveal=group_session.reveal_immediately,  # Map reveal_immediately to reveal
+        created_at=datetime.now(timezone.utc),  # Add created_at which is missing
+        status=group_session.status
+    )
+    return response
