@@ -29,9 +29,8 @@ class GroupSessionCreate(BaseModel):
 class GroupSessionRead(BaseModel):
     id: int
     name: str
-    title: Optional[str] = None
     description: Optional[str] = None
-    access_code_id: int
+    code_id: str
     max: int
     reveal: bool
     created_at: datetime
