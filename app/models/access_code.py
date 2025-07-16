@@ -10,5 +10,5 @@ class AccessCode(SQLModel, table=True):
     code: str #= Field(index=True, unique=True)
     host_id: int = Field(foreign_key="users.id")
     created_at: datetime = Field(default_factory=datetime.now)
-    expires_at: Optional[datetime] = None
+    expires_at: datetime
     status: str = Field(default="active")  # values: active, used, expired
