@@ -10,7 +10,7 @@ class GroupSession(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str
     description: str
-    code: int = Field(foreign_key="access_codes.id")
+    code_id: int = Field(foreign_key="access_codes.id")
     host_id: int = Field(foreign_key="users.id")
     max_group_size: int
     reveal_immediately: bool = Field(default=False)
