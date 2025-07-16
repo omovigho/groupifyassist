@@ -5,7 +5,7 @@ import os
 
 SECRET_KEY = os.getenv("SECRET_KEY", "supersecretkey")
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 3
+ACCESS_TOKEN_EXPIRE_MINUTES = 15
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
