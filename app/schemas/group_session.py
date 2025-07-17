@@ -38,3 +38,19 @@ class GroupSessionRead(BaseModel):
 
     class Config:
         orm_mode = True
+        
+class GroupJoinRequest(BaseModel):
+    code: str
+    member_identifier: str
+    member_data: Dict[str, str]
+
+
+class GroupJoinResponse(BaseModel):
+    message: str
+    group_name: str
+    session: str
+    member_identifier: str
+    
+    
+class MessageResponse(BaseModel):
+    message: str
