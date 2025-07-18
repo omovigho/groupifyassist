@@ -17,6 +17,7 @@ async def lifespan(app: FastAPI):
     # Clean up the ML models and release the resources
     #await create_db.clear()
 
+
 app = FastAPI(title="GroupifyAssist API", lifespan=lifespan)
 # Register Routers
 app.include_router(auth.router, tags=["Authentication"])
