@@ -9,7 +9,6 @@ from app.utils.code_generator import generate_group_code
 from datetime import datetime, timedelta, timezone
 from typing import Optional, List
 
-
 async def create_group_session(
     data: GroupSessionCreate,
     host_id: int,
@@ -54,8 +53,6 @@ async def create_group_session(
     await session.refresh(group_session)
 
     return group_session
-
-
 '''
 # app/services/group_session_service.py
 
