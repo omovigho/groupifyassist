@@ -13,8 +13,6 @@ from fastapi import Depends
 # Add root directory to sys.path
 sys.path.append(str(Path(__file__).resolve().parents[2]))
 
-# Now safely import models  
-
 # Load env
 current_dir = Path(__file__).parent
 config_path = current_dir / "config.env"
