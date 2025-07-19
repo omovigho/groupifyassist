@@ -17,6 +17,7 @@ load_dotenv(dotenv_path=env_path)
 def generate_code() -> str:
     return str(random.randint(100000, 999999))
 
+
 # Send email with subject and body
 def send_email(to_email: str, subject: str, body: str) -> None:
     smtp_server = "smtp.gmail.com"
@@ -41,12 +42,14 @@ def send_email(to_email: str, subject: str, body: str) -> None:
             detail=f"Failed to send email: {e}"
         )
 
+
 # Store a reset/verification code temporarily in cache
 def store_code(email: str, prefix: str = "reset_code", timeout: int = 60) -> str:
     code = generate_code()
     key = f"{prefix}_{email}"
     set_cache(key, code, timeout=timeout)
     return code
+
 
 # Verify the stored code against user input
 def verify_code(email: str, input_code: str, prefix: str = "reset_code") -> bool:
