@@ -14,7 +14,8 @@ class FieldDefinitionInput(BaseModel):
 class PreferentialRuleInput(BaseModel):
     field_key: str
     max_per_group: int
-    
+
+
 class GroupSessionCreate(BaseModel):
     name: str
     description: Optional[str] = None
@@ -25,6 +26,7 @@ class GroupSessionCreate(BaseModel):
     #fields: List[FieldDefinitionInput]  # Dynamic fields the host wants to collect
     fields: List[str]
     preferential_rules: Optional[List[PreferentialRuleInput]] = []
+
 
 class GroupSessionRead(BaseModel):
     id: int
@@ -38,7 +40,8 @@ class GroupSessionRead(BaseModel):
 
     class Config:
         orm_mode = True
-        
+
+
 class GroupJoinRequest(BaseModel):
     code: str
     member_identifier: str
