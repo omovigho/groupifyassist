@@ -10,6 +10,7 @@ class GroupMember(SQLModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     group_id: int = Field(foreign_key="groups.id")
+    session_id: int = Field(foreign_key="group_sessions.id")  # Added session_id field
     group_name: str  # e.g. "Team A", "Group 1"
     member_data: dict = Field(sa_column=Column(JSONB))
     #attributes: dict = Field(sa_column_kwargs={"type_": JSONB})  # dynamic member info
