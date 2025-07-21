@@ -106,6 +106,7 @@ async def create_group_session(
         host_id=host_id,
         max_group_size=data.max,
         reveal_immediately=data.reveal,
+        member_identifier=data.identifier,  # Use code as member identifier
         status="active",
         # Note: The model doesn't have created_at field, we'll add it in the response
     )
@@ -170,7 +171,7 @@ async def validate_code_and_get_fields(code: str, session: AsyncSession) -> dict
     field_keys = [field.field_key for field in fields_result.all()]
     
     # Return a dictionary instead of a list
-    return {"fields": field_keys}
+    return {"fields": field_keys, "identifier": group_session.member_identifier}
 
 
 async def join_group(
