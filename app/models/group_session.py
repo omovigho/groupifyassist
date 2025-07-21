@@ -12,6 +12,7 @@ class GroupSession(SQLModel, table=True):
     description: str
     code_id: int = Field(foreign_key="access_codes.id")
     host_id: int = Field(foreign_key="users.id")
+    member_identifier: str  # unique ID within the session
     max_group_size: int
     reveal_immediately: bool = Field(default=False)
     
