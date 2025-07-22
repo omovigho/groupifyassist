@@ -62,7 +62,7 @@ from app.models.group_session import GroupSession
 from app.models.access_code import AccessCode
 from app.models.groups import Group
 from app.models.field_definition import FieldDefinition
-from app.schemas.group_session import GroupSessionCreate, GroupSessionRead
+from app.schemas.group_session import GroupSessionCreate, GroupSessionRead, GroupJoinResponse
 from app.utils.code_generator import generate_group_code
 from datetime import datetime, timedelta, timezone
 from app.models.preferential_grouping_rule import PreferentialGroupingRule
@@ -179,19 +179,24 @@ async def join_group(
     member_identifier: str,
     member_data: dict,
     session: AsyncSession
-) -> GroupMember:
+) -> GroupJoinResponse:
+    import random
+    
     now = datetime.now(timezone.utc).replace(tzinfo=None)
 
+    # Validate access code
     access_code_result = await session.exec(select(AccessCode).where(AccessCode.code == code))
     access_code = access_code_result.first()
     if not access_code or access_code.expires_at < now or access_code.status != "active":
         raise ValueError("Invalid or expired code")
 
+    # Get group session
     session_result = await session.exec(select(GroupSession).where(GroupSession.code_id == access_code.id))
     group_session = session_result.first()
     if not group_session:
         raise ValueError("Group session not found")
 
+    # Check if member already joined
     dup_check = await session.exec(
         select(GroupMember).where(
             GroupMember.session_id == group_session.id,
@@ -201,52 +206,98 @@ async def join_group(
     if dup_check.first():
         raise ValueError("Member already joined")
 
+    # Get all groups for this session
     group_result = await session.exec(select(Group).where(Group.session_id == group_session.id))
     groups = group_result.all()
 
-    group_counts = {}
-    for group in groups:
-        count_result = await session.exec(
-            select(GroupMember).where(GroupMember.group_id == group.id)
-        )
-        group_counts[group.id] = len(count_result.all())
-
+    # Get all preferential rules for this session
     pref_result = await session.exec(
         select(PreferentialGroupingRule).where(
             PreferentialGroupingRule.group_session_id == group_session.id
         )
     )
     pref_rules = pref_result.all()
-
-    selected_group = None
-    for group in groups:
-        if group_counts[group.id] >= group_session.max_group_size:
+    
+    # Prepare for group assignment
+    eligible_groups = []
+    
+    # Shuffle the groups for randomization
+    shuffled_groups = list(groups)
+    random.shuffle(shuffled_groups)
+    
+    for group in shuffled_groups:
+        # Check if group is at maximum capacity
+        count_result = await session.exec(
+            select(GroupMember).where(GroupMember.group_id == group.id)
+        )
+        group_members = count_result.all()
+        member_count = len(group_members)
+        
+        if member_count >= group_session.max_group_size:
             continue
-
-        satisfies_all = True
+        
+        # Check all preferential rules
+        satisfies_all_rules = True
+        
         for rule in pref_rules:
-            if rule.field_key in member_data:
-                rule_count_result = await session.exec(
-                    select(GroupMember).where(
-                        GroupMember.group_id == group.id,
-                        GroupMember.member_data[rule.field_key].astext == member_data[rule.field_key]
-                    )
-                )
-                count = len(rule_count_result.all())
-                if count >= rule.max_per_group:
-                    satisfies_all = False
+            # For each rule, we need to check if this rule applies to the current member
+            # and if adding them would violate the rule
+            
+            # This is a special case for handling rules where the field_key might be a value
+            # For example, if rule.field_key is "female" and we want to check gender="female"
+            if rule.field_key in ["male", "female", "other"]:
+                # Special handling for gender values as field keys
+                is_match = False
+                # Check if this member matches the special value (e.g., gender="female" when rule is for "female")
+                if "gender" in member_data and str(member_data["gender"]).lower() == rule.field_key.lower():
+                    is_match = True
+                
+                # Count matching members in this group
+                matching_members = 0
+                for existing_member in group_members:
+                    if "gender" in existing_member.member_data:
+                        if str(existing_member.member_data["gender"]).lower() == rule.field_key.lower():
+                            matching_members += 1
+                
+                # If this member matches the rule target, check if adding them would exceed the limit
+                if is_match and matching_members >= rule.max_per_group:
+                    satisfies_all_rules = False
                     break
-
-        if satisfies_all:
-            selected_group = group
-            break
-
-    if not selected_group:
-        raise ValueError("No suitable group available for this member")
-
+            else:
+                # Standard handling for normal field-based rules
+                if rule.field_key not in member_data:
+                    continue
+                    
+                member_field_value = str(member_data[rule.field_key])
+                
+                # Count members in this group with the same field value
+                matching_members = 0
+                for existing_member in group_members:
+                    if rule.field_key in existing_member.member_data:
+                        existing_value = str(existing_member.member_data[rule.field_key])
+                        if existing_value == member_field_value:
+                            matching_members += 1
+                
+                # Check if adding this member would exceed the limit
+                if matching_members >= rule.max_per_group:
+                    satisfies_all_rules = False
+                    break
+                
+        if satisfies_all_rules:
+            eligible_groups.append(group)
+    
+    # If no eligible groups, raise error
+    if not eligible_groups:
+        raise ValueError("No suitable group available - all groups are either full or would violate preferential grouping rules")
+    
+    # Randomly select from eligible groups
+    selected_group = random.choice(eligible_groups)
+    
+    # Create the new member
     member = GroupMember(
         group_id=selected_group.id,
         session_id=group_session.id,
+        group_name=selected_group.name,
         member_identifier=member_identifier,
         member_data=member_data,
         joined_at=now
@@ -255,4 +306,9 @@ async def join_group(
     await session.commit()
     await session.refresh(member)
 
-    return member
+    return GroupJoinResponse(
+        message=f"Successfully joined group {selected_group.name}",
+        group_name=selected_group.name,
+        session=group_session.name,
+        member_identifier=member_identifier
+    )
