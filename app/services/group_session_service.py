@@ -240,31 +240,15 @@ async def join_group(
         satisfies_all_rules = True
         
         for rule in pref_rules:
-            # For each rule, we need to check if this rule applies to the current member
-            # and if adding them would violate the rule
+            # Checking if rule applies to the current member
             
-            # This is a special case for handling rules where the field_key might be a value
-            # For example, if rule.field_key is "female" and we want to check gender="female"
-            if rule.field_key in ["male", "female", "other"]:
-                # Special handling for gender values as field keys
-                is_match = False
-                # Check if this member matches the special value (e.g., gender="female" when rule is for "female")
-                if "gender" in member_data and str(member_data["gender"]).lower() == rule.field_key.lower():
-                    is_match = True
-                
-                # Count matching members in this group
-                matching_members = 0
-                for existing_member in group_members:
-                    if "gender" in existing_member.member_data:
-                        if str(existing_member.member_data["gender"]).lower() == rule.field_key.lower():
-                            matching_members += 1
-                
-                # If this member matches the rule target, check if adding them would exceed the limit
-                if is_match and matching_members >= rule.max_per_group:
-                    satisfies_all_rules = False
-                    break
-            else:
-                # Standard handling for normal field-based rules
+            # First, get all the fields defined for this session
+            fields_result = await session.exec(select(FieldDefinition).where(FieldDefinition.session_id == group_session.id))
+            field_keys = [field.field_key for field in fields_result.all()]
+            
+            # Check if rule.field_key is one of the defined fields or a specific value
+            if rule.field_key in field_keys:
+                # Standard field-based rule (e.g., "gender")
                 if rule.field_key not in member_data:
                     continue
                     
@@ -282,6 +266,31 @@ async def join_group(
                 if matching_members >= rule.max_per_group:
                     satisfies_all_rules = False
                     break
+            else:
+                # Value-based rule (e.g., field_key="female" or "advanced" or any specific value)
+                is_match = False
+                field_match = None
+                
+                # Check all fields to see if any matches the rule value
+                for field in member_data:
+                    if str(member_data[field]).lower() == rule.field_key.lower():
+                        is_match = True
+                        field_match = field
+                        break
+                
+                if is_match:
+                    # Count members in this group with the same value in the matching field
+                    matching_members = 0
+                    for existing_member in group_members:
+                        if field_match in existing_member.member_data:
+                            existing_value = str(existing_member.member_data[field_match])
+                            if existing_value.lower() == rule.field_key.lower():
+                                matching_members += 1
+                    
+                    # If this member matches and adding them would exceed the limit, mark group as ineligible
+                    if matching_members >= rule.max_per_group:
+                        satisfies_all_rules = False
+                        break
                 
         if satisfies_all_rules:
             eligible_groups.append(group)
