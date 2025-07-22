@@ -25,6 +25,7 @@ class GroupSessionCreate(BaseModel):
     group_names: List[str]  # List of group names to create under this session
     #fields: List[FieldDefinitionInput]  # Dynamic fields the host wants to collect
     fields: List[str]
+    identifier: str
     preferential_rules: Optional[List[PreferentialRuleInput]] = []
 
 
