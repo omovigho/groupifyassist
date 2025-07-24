@@ -11,4 +11,16 @@ from app.schemas.group_session import GroupJoinRequest, GroupJoinResponse
 from app.schemas.group_session import MessageResponse
 
 
-router = APIRouter(prefix="/api/groups", tags=["Grouping"])
+router = APIRouter(prefix="/api/selections", tags=["Selection"])
+
+@router.post("/create", response_model=GroupSessionRead)
+async def create_group(
+    data: GroupSessionCreate,
+    session: SessionDep,
+    current_user: User = Depends(get_current_user)
+):
+    try:
+        group = await create_group_session(data, current_user.id, session)
+        return group
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
