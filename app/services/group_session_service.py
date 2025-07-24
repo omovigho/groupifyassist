@@ -1,4 +1,5 @@
 # app/services/group_session_service.py
+import random
 
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -124,7 +125,6 @@ async def join_group(
     member_data: dict,
     session: AsyncSession
 ) -> GroupJoinResponse:
-    import random
     
     now = datetime.now(timezone.utc).replace(tzinfo=None)
 
@@ -269,5 +269,8 @@ async def join_group(
         )
     else:
         return GroupJoinResponse(
-            message=f"Successfully joined a group. Wait for the host to reveal your group.",
+            message="Successfully joined a group. Wait for the host to reveal your group.",
+            group_name="Hidden",  # Provide a placeholder value
+            session=group_session.name,
+            member_identifier=member_identifier
         )
