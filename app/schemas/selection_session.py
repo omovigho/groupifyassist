@@ -4,6 +4,11 @@ from typing import Optional, List, Dict
 from datetime import datetime
 
 
+class PreferentialRuleInput(BaseModel):
+    field_key: str
+    specific_number: int
+
+
 class SelectionSessionCreate(BaseModel):
     name: str
     description: Optional[str] = None
