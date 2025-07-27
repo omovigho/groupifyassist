@@ -47,12 +47,11 @@ async def create_selection_session(
     await session.flush()  # get access_code.id
     # Create the selection session
     selection_session = SelectionSession(
-        name=data.name,
+        title=data.title,
         description=data.description,
         code_id=access_code.id,
         host_id=host_id,
         max_group_size=data.max,
-        reveal_immediately=data.reveal,
         member_identifier=data.identifier,  # Use code as member identifier
         status="active",
         # Note: The model doesn't have created_at field, we'll add it in the response
