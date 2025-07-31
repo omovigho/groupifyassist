@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 
 from sentry_sdk import init
 from core.database import init_db
-from routes import auth, group_session 
+from routes import auth, group_session, selection_session 
 from models.user import User
 from core.dependencies import get_current_user
 #, session, member, group, export
@@ -22,6 +22,7 @@ app = FastAPI(title="GroupifyAssist API", lifespan=lifespan)
 # Register Routers
 app.include_router(auth.router, tags=["Authentication"])
 app.include_router(group_session.router)
+app.include_router(selection_session.router)
 '''app.include_router(session.router, prefix="/sessions", tags=["Sessions"])
 app.include_router(member.router, prefix="/members", tags=["Members"])
 app.include_router(group.router, prefix="/groups", tags=["Groups"])
