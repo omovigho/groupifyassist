@@ -9,4 +9,4 @@ class PreferentialSelectionRule(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     selection_session_id: int = Field(foreign_key="selection_sessions.id")
     field_key: str  # e.g. "gender"
-    specific_number: int
+    preference_max_selection: int
