@@ -1,2 +1,5 @@
 # Configuration files
 app/core/config.env
+
+# Python cache files
+__pycache__/
