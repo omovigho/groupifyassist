@@ -3,6 +3,7 @@ uvicorn['standard']
 sqlalchemy
 sqlmodel
 alembic
+asyncpg
 python-dotenv
 passlib
 upstash_redis
