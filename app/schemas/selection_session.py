@@ -24,8 +24,6 @@ class SelectionSessionRead(BaseModel):
     name: str
     description: Optional[str] = None
     code_id: str
-    max: int
-    reveal: bool
     created_at: datetime
     status: str
 
