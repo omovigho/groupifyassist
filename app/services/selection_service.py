@@ -1,7 +1,7 @@
 # app/services/group_session_service.py
 import random
 
-from groupifyassist.app.schemas.selection_session import SelectionSessionCreate, SelectionSessionRead
+from app.schemas.selection_session import SelectionSessionCreate, SelectionSessionRead
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 from app.models.selection_session import SelectionSession
@@ -48,8 +48,6 @@ async def create_selection_session(
         code_id=access_code.id,
         host_id=host_id,
         member_identifier=data.identifier,  # Use code as member identifier
-        status="active",
-        # Note: The model doesn't have created_at field, we'll add it in the response
     )
     session.add(selection_session)
     await session.flush()  # get selection_session.id
@@ -71,7 +69,7 @@ async def create_selection_session(
         rule_model = PreferentialSelectionRule(
             selection_session_id=selection_session.id,
             field_key=rule.field_key,
-            preference_max_selection=rule.specific_number
+            preference_max_selection=rule.preference_max_selection
         )
         session.add(rule_model)
 
@@ -84,7 +82,6 @@ async def create_selection_session(
         name=selection_session.name,
         description=selection_session.description,
         code_id=access_code.code,  # Map code to code_id as required by schema
-        preference_max_selection=selection_session.preference_max_selection,   # Map max_group_size to max
         created_at=datetime.now(timezone.utc),  # Add created_at which is missing
     )
     return response
