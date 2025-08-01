@@ -6,7 +6,7 @@ from datetime import datetime
 
 class PreferentialRuleInput(BaseModel):
     field_key: str
-    specific_number: int
+    preference_max_selection: int
 
 
 class SelectionSessionCreate(BaseModel):
@@ -25,7 +25,6 @@ class SelectionSessionRead(BaseModel):
     description: Optional[str] = None
     code_id: str
     created_at: datetime
-    status: str
 
     class Config:
         orm_mode = True
