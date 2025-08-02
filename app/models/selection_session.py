@@ -12,3 +12,4 @@ class SelectionSession(SQLModel, table=True):
     code_id: int = Field(foreign_key="access_codes.id")
     member_identifier: str  # unique ID within the session
     host_id: int = Field(foreign_key="users.id")
+    max_group_size: int
