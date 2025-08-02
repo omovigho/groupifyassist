@@ -281,30 +281,114 @@ async def select_members(
         field_key = list(data.preferential_selection.keys())[0]  # Get the field key
         field_value = data.preferential_selection[field_key]  # Get the field value
         
+        # Get all preferential rules for this session
+        pref_rule_query = await db_session.exec(
+            select(PreferentialSelectionRule).where(
+                PreferentialSelectionRule.selection_session_id == selection_session.id
+            )
+        )
+        pref_rules = pref_rule_query.all()
+        
+        # Determine max number for this preference
+        preferential_max = remaining_to_select  # Default to all remaining
+        
+        # Handle two types of rules:
+        # 1. Rules where field_key is an actual field (like "gender") - match by field and value
+        # 2. Rules where field_key is a specific value (like "female") - direct match
+        for rule in pref_rules:
+            # Case 1: If the rule specifies a field that matches our field_key (e.g., rule.field_key = "gender")
+            # We need to check the rule applies to our selection
+            # Case 2: If the rule specifies a value directly (e.g., rule.field_key = "female")
+            # We need to check if our selection value matches it
+            
+            # Log the rule for debugging
+            print(f"Checking rule: {rule.field_key} with max: {rule.preference_max_selection}")
+            print(f"Against selection: {field_key}={field_value}")
+            
+            # Direct match with the value (e.g., rule.field_key = "female")
+            if rule.field_key.lower() == field_value.lower():
+                print(f"Value match found! Setting max to: {rule.preference_max_selection}")
+                preferential_max = min(preferential_max, rule.preference_max_selection)
+        
+        # Count how many of this preference are already selected
+        already_preferential_count = 0
+        for member in already_selected_members:
+            # For field:value pair match (e.g., gender=female)
+            if field_key in member.attributes and str(member.attributes[field_key]).lower() == field_value.lower():
+                already_preferential_count += 1
+                print(f"Found already selected member with {field_key}={field_value}")
+        
+        print(f"Already selected count with this preference: {already_preferential_count}")
+        
+        # Adjust max based on already selected members with this preference
+        if already_preferential_count >= preferential_max:
+            preferential_max = 0  # Already reached the limit
+        else:
+            preferential_max -= already_preferential_count
+            
         # Find members that match the preferential criteria
         preferential_members = []
         for member in unselected_members:
-            if (field_key in member.attributes and 
-                str(member.attributes[field_key]).lower() == str(field_value).lower()):
+            if field_key in member.attributes and str(member.attributes[field_key]).lower() == field_value.lower():
                 preferential_members.append(member)
+                print(f"Found matching unselected member: {member.member_identifier}")
+        
+        print(f"Total preferential members found: {len(preferential_members)}")
         
         # Randomly shuffle the preferential members for fair selection
         random.shuffle(preferential_members)
         
-        # Select up to remaining_to_select preferential members
-        preferential_selected = preferential_members[:remaining_to_select]
+        # Select up to preferential_max members (respecting the preference limit)
+        # or remaining_to_select, whichever is smaller
+        max_to_select = min(preferential_max, remaining_to_select)
+        print(f"Will select {max_to_select} members preferentially (max allowed: {preferential_max}, remaining needed: {remaining_to_select})")
+        
+        preferential_selected = preferential_members[:max_to_select]
         remaining_to_select -= len(preferential_selected)
+        
+        print(f"Selected {len(preferential_selected)} preferential members, {remaining_to_select} remaining to select")
     
     # If we still need more members, select them randomly
     if remaining_to_select > 0:
         # Get the remaining unselected members who were not selected in the preferential round
         remaining_unselected = [m for m in unselected_members if m not in preferential_selected]
+        print(f"Have {len(remaining_unselected)} members available for random selection")
+        
+        # For members selected by preference with gender=female, we need to avoid selecting more females
+        # if we have a rule limiting females
+        if data.preferential_selection:
+            field_key = list(data.preferential_selection.keys())[0]
+            field_value = data.preferential_selection[field_key]
+            
+            # Check if there's a rule for this specific value
+            rule_for_value = False
+            max_allowed = None
+            for rule in pref_rules:
+                if rule.field_key.lower() == field_value.lower():
+                    rule_for_value = True
+                    max_allowed = rule.preference_max_selection
+                    break
+                    
+            if rule_for_value:
+                print(f"Found rule limiting {field_value} to {max_allowed}")
+                # Count total selected including already selected and newly preferential selected
+                current_count = already_preferential_count + len(preferential_selected)
+                print(f"Current count of {field_value}: {current_count} out of max {max_allowed}")
+                
+                # If we're already at or over the limit, exclude members with this value from random selection
+                if current_count >= max_allowed:
+                    print(f"Already reached limit for {field_value}, excluding from random selection")
+                    remaining_unselected = [m for m in remaining_unselected if not (
+                        field_key in m.attributes and str(m.attributes[field_key]).lower() == field_value.lower()
+                    )]
+                    print(f"After excluding, have {len(remaining_unselected)} members for random selection")
         
         # Randomly shuffle the remaining unselected members
         random.shuffle(remaining_unselected)
         
         # Select up to remaining_to_select random members
         random_selected = remaining_unselected[:remaining_to_select]
+        print(f"Randomly selected {len(random_selected)} additional members")
     
     # Combine all selected members
     newly_selected_members = preferential_selected + random_selected
@@ -334,12 +418,39 @@ async def select_members(
     # Create response with details
     selected_member_identifiers = [m.member_identifier for m in already_selected_members] + [m.member_identifier for m in newly_selected_members]
     
-    return SelectionResult(
+    # For debugging, count how many of the selected members match the preferential criteria
+    if data.preferential_selection:
+        field_key = list(data.preferential_selection.keys())[0]
+        field_value = data.preferential_selection[field_key]
+        
+        # Count in all selected members (already selected + newly selected)
+        all_selected = already_selected_members + newly_selected_members
+        matching_count = 0
+        
+        for member in all_selected:
+            if field_key in member.attributes and str(member.attributes[field_key]).lower() == field_value.lower():
+                matching_count += 1
+        
+        print(f"FINAL CHECK: Total members with {field_key}={field_value}: {matching_count}")
+        
+        # Check against rule limits
+        for rule in pref_rules:
+            if rule.field_key.lower() == field_value.lower():
+                print(f"Rule limit for {field_value}: {rule.preference_max_selection}")
+                print(f"Selected count: {matching_count}")
+                if matching_count > rule.preference_max_selection:
+                    print("WARNING: Selected more than the rule limit!")
+
+    # Create the result object
+    result = SelectionResult(
         selected_count=len(already_selected_members) + len(newly_selected_members),
         preferential_count=len(preferential_selected),
         random_count=len(random_selected) + len(already_selected_members),
         member_identifiers=selected_member_identifiers
     )
+    
+    print(f"Final result: {result}")
+    return result
 
 
 async def get_selected_members(
