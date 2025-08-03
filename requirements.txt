@@ -11,3 +11,8 @@ bcrypt
 passlib[bcrypt]
 python-jose[cryptography]
 APScheduler
+pandas
+openpyxl
+xlsxwriter
+fpdf
+fpdf2
