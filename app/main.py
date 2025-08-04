@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 
 from sentry_sdk import init
 from core.database import init_db
-from routes import auth, group_session, selection_session, export
+from routes import auth, group_session, selection_session, export, debug
 from models.user import User
 from core.dependencies import get_current_user
 #, session, member, group
@@ -24,6 +24,7 @@ app.include_router(auth.router, tags=["Authentication"])
 app.include_router(group_session.router)
 app.include_router(selection_session.router)
 app.include_router(export.router)
+app.include_router(debug.router)
 '''app.include_router(session.router, prefix="/sessions", tags=["Sessions"])
 app.include_router(member.router, prefix="/members", tags=["Members"])
 app.include_router(group.router, prefix="/groups", tags=["Groups"])
@@ -38,3 +39,8 @@ async def on_startup():
 @app.get("/")
 async def root(current_user: User = Depends(get_current_user)):
     return {"message": "Welcome to GroupifyAssist API"}
+    
+# Debug endpoint to check current user
+@app.get("/api/debug/me")
+async def debug_me(current_user: User = Depends(get_current_user)):
+    return {"user_id": current_user.id, "email": current_user.email}
