@@ -4,6 +4,7 @@ from datetime import datetime
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 from typing import Optional, List, Dict, Any, Tuple
+from app.utils.export_logger import log_export
 
 from app.models.group_session import GroupSession
 from app.models.selection_session import SelectionSession
@@ -13,6 +14,7 @@ from app.models.access_code import AccessCode
 from app.models.selection_member import SelectionMember
 
 import pandas as pd
+import xlsxwriter
 from fpdf import FPDF
 
 
@@ -50,46 +52,141 @@ async def validate_host_access(
 async def generate_excel_for_session(
     session_id: int,
     session_type: str,
-    db: AsyncSession
+    db: AsyncSession,
+    save_to_disk: bool = False,
+    save_directory: str = None
 ) -> Tuple[BytesIO, Dict[str, Any]]:
-    """Generate Excel file for the given session type"""
-    buffer = BytesIO()
+    """Generate Excel file for the given session type
     
+    Args:
+        session_id: ID of the session
+        session_type: Type of session ('group' or 'selection')
+        db: Database session
+        save_to_disk: Whether to save the file to disk (default: False)
+        save_directory: Directory to save the file to (required if save_to_disk is True)
+        
+    Returns:
+        Tuple containing the file buffer and metadata dictionary
+    """
     # Get session data based on session type
     if session_type == "group":
         session_data = await get_group_session_data(session_id, db)
         
-        # Create Excel with multiple sheets
-        with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
-            # Session info sheet
-            pd.DataFrame([{
-                "Name": session_data["session"].name,
-                "Description": session_data["session"].description,
-                "Access Code": session_data["access_code"].code,
-                "Max Group Size": session_data["session"].max_group_size,
-                "Status": session_data["session"].status,
-                "Created At": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            }]).to_excel(writer, sheet_name="Session Info", index=False)
+        # Create a workbook and add a worksheet
+        buffer = BytesIO()
+        workbook = xlsxwriter.Workbook(buffer)
+        
+        # Add session info sheet
+        info_sheet = workbook.add_worksheet("Session Info")
+        
+        # Set up some formatting
+        bold = workbook.add_format({'bold': True})
+        info_sheet.set_column(0, 0, 20)
+        info_sheet.set_column(1, 1, 30)
+        
+        # Write session details
+        info_sheet.write(0, 0, "Name", bold)
+        info_sheet.write(0, 1, session_data["session"].name)
+        info_sheet.write(1, 0, "Description", bold)
+        info_sheet.write(1, 1, session_data["session"].description)
+        info_sheet.write(2, 0, "Access Code", bold)
+        info_sheet.write(2, 1, session_data["access_code"].code)
+        info_sheet.write(3, 0, "Max Group Size", bold)
+        info_sheet.write(3, 1, session_data["session"].max_group_size)
+        info_sheet.write(4, 0, "Status", bold)
+        info_sheet.write(4, 1, session_data["session"].status)
+        info_sheet.write(5, 0, "Created At", bold)
+        info_sheet.write(5, 1, datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+        
+        # Add members sheet
+        members_sheet = workbook.add_worksheet("Group Members")
+        
+        # Set column widths
+        members_sheet.set_column(0, 0, 20)  # Group Name
+        members_sheet.set_column(1, 1, 20)  # Member Name
+        members_sheet.set_column(2, 2, 15)  # Member ID
+        members_sheet.set_column(3, 10, 15)  # Fields
+        
+        # Write headers
+        headers = ["Group Name", "Member Name", "Member ID"]
+        
+        # Get all possible member_data keys (excluding 'name' which is already a column)
+        member_data_keys = set()
+        for member in session_data["members"]:
+            if hasattr(member, 'member_data') and isinstance(member.member_data, dict):
+                data_copy = member.member_data.copy()
+                if 'name' in data_copy:
+                    del data_copy['name']
+                member_data_keys.update(data_copy.keys())
+        
+        # Add member_data fields to headers
+        for key in sorted(list(member_data_keys)):
+            headers.append(f"Field: {key}")
+        
+        for col, header in enumerate(headers):
+            members_sheet.write(0, col, header, bold)
+        
+        # Get a reference to member_data_keys that we created above
+        sorted_member_data_keys = sorted(list(member_data_keys))
+        
+        # Write member data
+        row = 1
+        for group in session_data["groups"]:
+            group_members = [m for m in session_data["members"] if m.group_id == group.id]
+            for member in group_members:
+                col = 0
+                members_sheet.write(row, col, group.name)
+                col += 1
+                
+                # Get name from member_data if available
+                name = "N/A"
+                if hasattr(member, 'member_data') and isinstance(member.member_data, dict):
+                    name = member.member_data.get('name', 'N/A')
+                
+                members_sheet.write(row, col, str(name))
+                col += 1
+                members_sheet.write(row, col, member.member_identifier)
+                col += 1
+                
+                # Write additional member data fields
+                if hasattr(member, 'member_data') and isinstance(member.member_data, dict):
+                    data_copy = member.member_data.copy()
+                    if 'name' in data_copy:  # Skip name as it's already in column 1
+                        del data_copy['name']
+                    
+                    # Add each member_data field in the same order as the headers
+                    for i, key in enumerate(sorted_member_data_keys):
+                        if key in data_copy:
+                            members_sheet.write(row, col + i, str(data_copy[key]))
+                        else:
+                            members_sheet.write(row, col + i, "")
+                
+                row += 1
+        
+        # Close the workbook
+        workbook.close()
+        
+        # Save to disk if requested
+        if save_to_disk and save_directory:
+            import os
+            from pathlib import Path
             
-            # Group members sheet
-            groups_df = pd.DataFrame([
-                {
-                    "Group Name": group.name,
-                    "Member Name": member.name,
-                    "Member ID": member.member_id,
-                    **({f"Field {i+1}": value for i, value in enumerate(member.fields.split(","))} if member.fields else {})
-                }
-                for group in session_data["groups"]
-                for member in session_data["members"] if member.group_id == group.id
-            ])
+            # Create directory if it doesn't exist
+            Path(save_directory).mkdir(parents=True, exist_ok=True)
             
-            if not groups_df.empty:
-                groups_df.to_excel(writer, sheet_name="Group Members", index=False)
+            # Generate filename
+            filename = f"{session_type}_session_{session_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+            filepath = os.path.join(save_directory, filename)
             
-            # Format the sheets for better readability
-            workbook = writer.book
-            for worksheet in writer.sheets.values():
-                worksheet.set_column(0, 10, 15)
+            # Save a copy to disk
+            buffer.seek(0)
+            with open(filepath, 'wb') as file:
+                file.write(buffer.getvalue())
+            
+            print(f"Excel file saved to: {filepath}")
+        
+        # Reset buffer position for streaming
+        buffer.seek(0)
         
         # Return the file buffer and session metadata
         return buffer, {
@@ -100,35 +197,109 @@ async def generate_excel_for_session(
     elif session_type == "selection":
         session_data = await get_selection_session_data(session_id, db)
         
-        # Create Excel with multiple sheets
-        with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
-            # Session info sheet
-            pd.DataFrame([{
-                "Name": session_data["session"].name,
-                "Description": session_data["session"].description,
-                "Access Code": session_data["access_code"].code,
-                "Max Group Size": session_data["session"].max_group_size,
-                "Created At": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            }]).to_excel(writer, sheet_name="Session Info", index=False)
+        # Create a workbook and add a worksheet
+        buffer = BytesIO()
+        workbook = xlsxwriter.Workbook(buffer)
+        
+        # Add session info sheet
+        info_sheet = workbook.add_worksheet("Session Info")
+        
+        # Set up some formatting
+        bold = workbook.add_format({'bold': True})
+        info_sheet.set_column(0, 0, 20)
+        info_sheet.set_column(1, 1, 30)
+        
+        # Write session details
+        info_sheet.write(0, 0, "Name", bold)
+        info_sheet.write(0, 1, session_data["session"].name)
+        info_sheet.write(1, 0, "Description", bold)
+        info_sheet.write(1, 1, session_data["session"].description or "N/A")
+        info_sheet.write(2, 0, "Access Code", bold)
+        info_sheet.write(2, 1, session_data["access_code"].code)
+        info_sheet.write(3, 0, "Max Group Size", bold)
+        info_sheet.write(3, 1, session_data["session"].max_group_size)
+        info_sheet.write(4, 0, "Created At", bold)
+        info_sheet.write(4, 1, datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+        
+        # Sort members - selected members first
+        sorted_members = sorted(session_data["members"], key=lambda m: not m.selected)
+        
+        # Add members sheet
+        members_sheet = workbook.add_worksheet("Selection Members")
+        
+        # Set column widths
+        members_sheet.set_column(0, 0, 20)  # Member ID
+        members_sheet.set_column(1, 1, 10)  # Selected
+        members_sheet.set_column(2, 2, 20)  # Joined At
+        members_sheet.set_column(3, 15, 15)  # Attributes
+        
+        # Create formats
+        bold = workbook.add_format({'bold': True})
+        selected_format = workbook.add_format({'bg_color': '#E0EFE0'})  # Light green
+        
+        # Add summary at top
+        selected_count = sum(1 for m in session_data["members"] if m.selected)
+        total_count = len(session_data["members"])
+        members_sheet.write(0, 0, "Selection Summary:", bold)
+        members_sheet.write(0, 1, f"{selected_count} selected out of {total_count} total members")
+        
+        # Get all possible attribute keys
+        attribute_keys = set()
+        for member in session_data["members"]:
+            if member.attributes and isinstance(member.attributes, dict):
+                attribute_keys.update(member.attributes.keys())
+        
+        attribute_keys = sorted(list(attribute_keys))
+        
+        # Write headers
+        headers = ["Member ID", "Selected", "Joined At"] + attribute_keys
+        for col, header in enumerate(headers):
+            members_sheet.write(2, col, header, bold)
+        
+        # Write member data
+        for i, member in enumerate(sorted_members):
+            row = i + 3  # Start at row 3 (after summary and headers)
             
-            # Selection members sheet
-            members_df = pd.DataFrame([
-                {
-                    "Member ID": member.member_identifier,
-                    "Selected": member.selected,
-                    "Joined At": member.joined_at.strftime("%Y-%m-%d %H:%M:%S") if member.joined_at else None,
-                    **(({k: v for k, v in member.attributes.items()}) if member.attributes else {})
-                }
-                for member in session_data["members"]
-            ])
+            # Apply formatting if selected
+            row_format = selected_format if member.selected else None
             
-            if not members_df.empty:
-                members_df.to_excel(writer, sheet_name="Selection Members", index=False)
+            # Write member basic data
+            members_sheet.write(row, 0, member.member_identifier, row_format)
+            members_sheet.write(row, 1, "Yes" if member.selected else "No", row_format)
+            joined_at = member.joined_at.strftime("%Y-%m-%d %H:%M:%S") if member.joined_at else "N/A"
+            members_sheet.write(row, 2, joined_at, row_format)
             
-            # Format the sheets for better readability
-            workbook = writer.book
-            for worksheet in writer.sheets.values():
-                worksheet.set_column(0, 10, 15)
+            # Write attributes
+            if member.attributes and isinstance(member.attributes, dict):
+                for j, key in enumerate(attribute_keys):
+                    if key in member.attributes:
+                        value = member.attributes[key]
+                        members_sheet.write(row, j + 3, str(value), row_format)
+        
+        # Close the workbook
+        workbook.close()
+        
+        # Save to disk if requested
+        if save_to_disk and save_directory:
+            import os
+            from pathlib import Path
+            
+            # Create directory if it doesn't exist
+            Path(save_directory).mkdir(parents=True, exist_ok=True)
+            
+            # Generate filename
+            filename = f"{session_type}_session_{session_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+            filepath = os.path.join(save_directory, filename)
+            
+            # Save a copy to disk
+            buffer.seek(0)
+            with open(filepath, 'wb') as file:
+                file.write(buffer.getvalue())
+            
+            print(f"Excel file saved to: {filepath}")
+        
+        # Reset buffer position for streaming
+        buffer.seek(0)
         
         # Return the file buffer and session metadata
         return buffer, {
@@ -143,7 +314,9 @@ async def generate_excel_for_session(
 async def generate_pdf_for_session(
     session_id: int,
     session_type: str,
-    db: AsyncSession
+    db: AsyncSession,
+    save_to_disk: bool = False,
+    save_directory: str = None
 ) -> Tuple[BytesIO, Dict[str, Any]]:
     """Generate PDF file for the given session type"""
     buffer = BytesIO()
@@ -188,9 +361,30 @@ async def generate_pdf_for_session(
             # List members in this group
             pdf.set_font("Arial", "", 11)
             for member in [m for m in session_data["members"] if m.group_id == group.id]:
-                pdf.cell(40, 10, member.member_id, border=1)
-                pdf.cell(50, 10, member.name, border=1)
-                pdf.cell(100, 10, member.fields or "N/A", border=1)
+                pdf.cell(40, 10, member.member_identifier, border=1)
+                
+                # Get name from member_data if available
+                name = "N/A"
+                if hasattr(member, 'member_data') and isinstance(member.member_data, dict):
+                    name = member.member_data.get('name', 'N/A')
+                
+                pdf.cell(50, 10, str(name), border=1)
+                
+                # Format member_data as a string
+                member_data_str = "N/A"
+                if hasattr(member, 'member_data') and isinstance(member.member_data, dict):
+                    # Remove name if already shown in previous column
+                    data_copy = member.member_data.copy()
+                    if 'name' in data_copy:
+                        del data_copy['name']
+                    
+                    if data_copy:
+                        member_data_str = ", ".join([f"{k}: {v}" for k, v in data_copy.items()])
+                        # Truncate if too long
+                        if len(member_data_str) > 50:
+                            member_data_str = member_data_str[:47] + "..."
+                
+                pdf.cell(100, 10, member_data_str, border=1)
                 pdf.ln()
             
             pdf.ln(5)
@@ -226,29 +420,73 @@ async def generate_pdf_for_session(
         pdf.cell(60, 10, "Attributes", border=1)
         pdf.ln()
         
-        # List all members
+        # Sort members - selected members first
+        sorted_members = sorted(session_data["members"], key=lambda m: not m.selected)
+        
+        # Get count of selected members
+        selected_count = sum(1 for m in session_data["members"] if m.selected)
+        total_count = len(session_data["members"])
+        
+        # Add selection summary
+        pdf.set_font("Arial", "B", 12)
+        pdf.cell(0, 10, f"Selection Summary: {selected_count} selected out of {total_count} total members", ln=True)
+        pdf.ln(5)
+        
+        # List all members (selected first)
         pdf.set_font("Arial", "", 11)
-        for member in session_data["members"]:
-            pdf.cell(40, 10, member.member_identifier, border=1)
-            pdf.cell(30, 10, "Yes" if member.selected else "No", border=1)
-            pdf.cell(60, 10, member.joined_at.strftime("%Y-%m-%d %H:%M:%S") if member.joined_at else "N/A", border=1)
+        for member in sorted_members:
+            # Highlight selected members with light gray background
+            if member.selected:
+                pdf.set_fill_color(230, 230, 230)  # Light gray
+                fill = True
+            else:
+                fill = False
+                
+            pdf.cell(40, 10, member.member_identifier, border=1, fill=fill)
+            pdf.cell(30, 10, "Yes" if member.selected else "No", border=1, fill=fill)
+            pdf.cell(60, 10, member.joined_at.strftime("%Y-%m-%d %H:%M:%S") if member.joined_at else "N/A", border=1, fill=fill)
             
             # Format attributes as string
-            if member.attributes:
+            if member.attributes and isinstance(member.attributes, dict):
                 attr_str = ", ".join([f"{k}: {v}" for k, v in member.attributes.items()])
                 attr_str = attr_str[:30] + "..." if len(attr_str) > 30 else attr_str
             else:
                 attr_str = "N/A"
                 
-            pdf.cell(60, 10, attr_str, border=1)
+            pdf.cell(60, 10, attr_str, border=1, fill=fill)
             pdf.ln()
     
     else:
         raise ValueError(f"Unknown session type: {session_type}")
         
     # Save PDF to buffer
-    pdf.output(dest='S').encode('latin-1')
+    pdf_data = pdf.output(dest='S')
+    # Handle different return types from fpdf.output
+    if isinstance(pdf_data, str):
+        buffer.write(pdf_data.encode('latin-1'))
+    elif isinstance(pdf_data, bytes) or isinstance(pdf_data, bytearray):
+        buffer.write(pdf_data)
     buffer.seek(0)
+    
+    # Save to disk if requested
+    if save_to_disk and save_directory:
+        import os
+        from pathlib import Path
+        
+        # Create directory if it doesn't exist
+        Path(save_directory).mkdir(parents=True, exist_ok=True)
+        
+        # Generate filename
+        filename = f"{session_type}_session_{session_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+        filepath = os.path.join(save_directory, filename)
+        
+        # Save file
+        with open(filepath, 'wb') as file:
+            # Need to create a copy of the buffer since we already used seek(0)
+            buffer_copy = BytesIO(buffer.getvalue())
+            file.write(buffer_copy.getvalue())
+        
+        print(f"PDF saved to: {filepath}")
     
     # Return the file buffer and session metadata
     return buffer, {
