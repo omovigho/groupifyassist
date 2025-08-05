@@ -81,34 +81,81 @@ async def generate_excel_for_session(
         
         # Set up some formatting
         bold = workbook.add_format({'bold': True})
-        info_sheet.set_column(0, 0, 20)
-        info_sheet.set_column(1, 1, 30)
+        header_format = workbook.add_format({'bold': True, 'bg_color': '#D0D0D0', 'border': 1})
+        info_sheet.set_column(0, 0, 30)
+        info_sheet.set_column(1, 1, 50)
         
         # Write session details
-        info_sheet.write(0, 0, "Name", bold)
-        info_sheet.write(0, 1, session_data["session"].name)
-        info_sheet.write(1, 0, "Description", bold)
-        info_sheet.write(1, 1, session_data["session"].description)
-        info_sheet.write(2, 0, "Access Code", bold)
-        info_sheet.write(2, 1, session_data["access_code"].code)
-        info_sheet.write(3, 0, "Max Group Size", bold)
-        info_sheet.write(3, 1, session_data["session"].max_group_size)
-        info_sheet.write(4, 0, "Status", bold)
-        info_sheet.write(4, 1, session_data["session"].status)
-        info_sheet.write(5, 0, "Created At", bold)
-        info_sheet.write(5, 1, datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+        row = 0
+        info_sheet.write(row, 0, "Session Information", header_format)
+        info_sheet.write(row, 1, "", header_format)
+        row += 1
+        
+        info_sheet.write(row, 0, "Name", bold)
+        info_sheet.write(row, 1, session_data["session"].name)
+        row += 1
+        
+        info_sheet.write(row, 0, "Description", bold)
+        info_sheet.write(row, 1, session_data["session"].description)
+        row += 1
+        
+        info_sheet.write(row, 0, "Access Code", bold)
+        info_sheet.write(row, 1, session_data["access_code"].code)
+        row += 1
+        
+        info_sheet.write(row, 0, "Max Group Size", bold)
+        info_sheet.write(row, 1, session_data["session"].max_group_size)
+        row += 1
+        
+        info_sheet.write(row, 0, "Status", bold)
+        info_sheet.write(row, 1, session_data["session"].status)
+        row += 1
+        
+        info_sheet.write(row, 0, "Generated At", bold)
+        info_sheet.write(row, 1, datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+        row += 2
+        
+        # Add preferential grouping rules
+        if session_data["preferential_rules"]:
+            info_sheet.write(row, 0, "Preferential Rules", header_format)
+            info_sheet.write(row, 1, "", header_format)
+            row += 1
+            
+            for rule in session_data["preferential_rules"]:
+                info_sheet.write(row, 0, f"Field: {rule.field_key}", bold)
+                info_sheet.write(row, 1, f"Maximum {rule.max_per_group} per group")
+                row += 1
+            
+            row += 1
+        
+        # Add field definitions
+        if session_data["field_definitions"]:
+            info_sheet.write(row, 0, "Field Definitions", header_format)
+            info_sheet.write(row, 1, "", header_format)
+            row += 1
+            
+            for field_def in session_data["field_definitions"]:
+                info_sheet.write(row, 0, f"Field: {field_def.field_key}", bold)
+                
+                field_info = f"Label: {field_def.label}, Type: {field_def.data_type}"
+                if field_def.options:
+                    options_str = ", ".join([f"{k}: {v}" for k, v in field_def.options.items()])
+                    field_info += f", Options: {options_str}"
+                field_info += f", Required: {'Yes' if field_def.required else 'No'}"
+                
+                info_sheet.write(row, 1, field_info)
+                row += 1
         
         # Add members sheet
         members_sheet = workbook.add_worksheet("Group Members")
         
         # Set column widths
         members_sheet.set_column(0, 0, 20)  # Group Name
-        members_sheet.set_column(1, 1, 20)  # Member Name
-        members_sheet.set_column(2, 2, 15)  # Member ID
-        members_sheet.set_column(3, 10, 15)  # Fields
+        members_sheet.set_column(1, 1, 20)  # Member ID
+        members_sheet.set_column(2, 10, 15)  # Fields
         
         # Write headers
-        headers = ["Group Name", "Member Name", "Member ID"]
+        headers = ["Group Name", "Member ID"]
         
         # Get all possible member_data keys (excluding 'name' which is already a column)
         member_data_keys = set()
@@ -136,14 +183,6 @@ async def generate_excel_for_session(
             for member in group_members:
                 col = 0
                 members_sheet.write(row, col, group.name)
-                col += 1
-                
-                # Get name from member_data if available
-                name = "N/A"
-                if hasattr(member, 'member_data') and isinstance(member.member_data, dict):
-                    name = member.member_data.get('name', 'N/A')
-                
-                members_sheet.write(row, col, str(name))
                 col += 1
                 members_sheet.write(row, col, member.member_identifier)
                 col += 1
@@ -206,20 +245,46 @@ async def generate_excel_for_session(
         
         # Set up some formatting
         bold = workbook.add_format({'bold': True})
-        info_sheet.set_column(0, 0, 20)
-        info_sheet.set_column(1, 1, 30)
+        header_format = workbook.add_format({'bold': True, 'bg_color': '#D0D0D0', 'border': 1})
+        info_sheet.set_column(0, 0, 30)
+        info_sheet.set_column(1, 1, 50)
         
         # Write session details
-        info_sheet.write(0, 0, "Name", bold)
-        info_sheet.write(0, 1, session_data["session"].name)
-        info_sheet.write(1, 0, "Description", bold)
-        info_sheet.write(1, 1, session_data["session"].description or "N/A")
-        info_sheet.write(2, 0, "Access Code", bold)
-        info_sheet.write(2, 1, session_data["access_code"].code)
-        info_sheet.write(3, 0, "Max Group Size", bold)
-        info_sheet.write(3, 1, session_data["session"].max_group_size)
-        info_sheet.write(4, 0, "Created At", bold)
-        info_sheet.write(4, 1, datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+        row = 0
+        info_sheet.write(row, 0, "Session Information", header_format)
+        info_sheet.write(row, 1, "", header_format)
+        row += 1
+        
+        info_sheet.write(row, 0, "Name", bold)
+        info_sheet.write(row, 1, session_data["session"].name)
+        row += 1
+        
+        info_sheet.write(row, 0, "Description", bold)
+        info_sheet.write(row, 1, session_data["session"].description or "N/A")
+        row += 1
+        
+        info_sheet.write(row, 0, "Access Code", bold)
+        info_sheet.write(row, 1, session_data["access_code"].code)
+        row += 1
+        
+        info_sheet.write(row, 0, "Max Group Size", bold)
+        info_sheet.write(row, 1, session_data["session"].max_group_size)
+        row += 1
+        
+        info_sheet.write(row, 0, "Generated At", bold)
+        info_sheet.write(row, 1, datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+        row += 2
+        
+        # Add preferential selection rules
+        if session_data["preferential_rules"]:
+            info_sheet.write(row, 0, "Preferential Rules", header_format)
+            info_sheet.write(row, 1, "", header_format)
+            row += 1
+            
+            for rule in session_data["preferential_rules"]:
+                info_sheet.write(row, 0, f"Field: {rule.field_key}", bold)
+                info_sheet.write(row, 1, f"Maximum selection: {rule.preference_max_selection}")
+                row += 1
         
         # Sort members - selected members first
         sorted_members = sorted(session_data["members"], key=lambda m: not m.selected)
@@ -341,6 +406,33 @@ async def generate_pdf_for_session(
         pdf.cell(0, 10, f"Status: {session_data['session'].status}", ln=True)
         pdf.cell(0, 10, f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", ln=True)
         
+        # Preferential Rules
+        if session_data["preferential_rules"]:
+            pdf.ln(5)
+            pdf.set_font("Arial", "B", 14)
+            pdf.cell(0, 10, "Preferential Rules", ln=True)
+            
+            pdf.set_font("Arial", "", 12)
+            for rule in session_data["preferential_rules"]:
+                pdf.cell(0, 10, f"Field: {rule.field_key} - Maximum {rule.max_per_group} per group", ln=True)
+        
+        # Field Definitions
+        if session_data["field_definitions"]:
+            pdf.ln(5)
+            pdf.set_font("Arial", "B", 14)
+            pdf.cell(0, 10, "Field Definitions", ln=True)
+            
+            pdf.set_font("Arial", "", 12)
+            for field_def in session_data["field_definitions"]:
+                field_info = f"Field: {field_def.field_key} - Label: {field_def.label}, Type: {field_def.data_type}"
+                pdf.cell(0, 10, field_info, ln=True)
+                
+                if field_def.options:
+                    options_str = ", ".join([f"{k}: {v}" for k, v in field_def.options.items()])
+                    pdf.cell(0, 10, f"    Options: {options_str}", ln=True)
+                
+                pdf.cell(0, 10, f"    Required: {'Yes' if field_def.required else 'No'}", ln=True)
+        
         # Group information
         pdf.ln(10)
         pdf.set_font("Arial", "B", 14)
@@ -353,39 +445,35 @@ async def generate_pdf_for_session(
             
             # Table header
             pdf.set_font("Arial", "B", 11)
-            pdf.cell(40, 10, "Member ID", border=1)
-            pdf.cell(50, 10, "Member Name", border=1)
-            pdf.cell(100, 10, "Fields", border=1)
+            pdf.cell(50, 10, "Member ID", border=1)
+            pdf.cell(140, 10, "Member Data", border=1)
             pdf.ln()
             
             # List members in this group
             pdf.set_font("Arial", "", 11)
             for member in [m for m in session_data["members"] if m.group_id == group.id]:
-                pdf.cell(40, 10, member.member_identifier, border=1)
-                
-                # Get name from member_data if available
-                name = "N/A"
-                if hasattr(member, 'member_data') and isinstance(member.member_data, dict):
-                    name = member.member_data.get('name', 'N/A')
-                
-                pdf.cell(50, 10, str(name), border=1)
+                pdf.cell(50, 10, member.member_identifier, border=1)
                 
                 # Format member_data as a string
                 member_data_str = "N/A"
                 if hasattr(member, 'member_data') and isinstance(member.member_data, dict):
-                    # Remove name if already shown in previous column
                     data_copy = member.member_data.copy()
-                    if 'name' in data_copy:
-                        del data_copy['name']
                     
                     if data_copy:
                         member_data_str = ", ".join([f"{k}: {v}" for k, v in data_copy.items()])
-                        # Truncate if too long
-                        if len(member_data_str) > 50:
-                            member_data_str = member_data_str[:47] + "..."
                 
-                pdf.cell(100, 10, member_data_str, border=1)
-                pdf.ln()
+                # Handle long data strings with multi_cell for text wrapping
+                current_x = pdf.get_x()
+                current_y = pdf.get_y()
+                
+                # Calculate if text will fit in one line
+                if pdf.get_string_width(member_data_str) > 140:
+                    # Use multi_cell for text wrapping
+                    pdf.multi_cell(140, 10, member_data_str, border=1)
+                else:
+                    # Use regular cell for single line
+                    pdf.cell(140, 10, member_data_str, border=1)
+                    pdf.ln()
             
             pdf.ln(5)
         
@@ -406,6 +494,16 @@ async def generate_pdf_for_session(
         pdf.cell(0, 10, f"Access Code: {session_data['access_code'].code}", ln=True)
         pdf.cell(0, 10, f"Max Group Size: {session_data['session'].max_group_size}", ln=True)
         pdf.cell(0, 10, f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", ln=True)
+        
+        # Preferential Selection Rules
+        if session_data["preferential_rules"]:
+            pdf.ln(5)
+            pdf.set_font("Arial", "B", 14)
+            pdf.cell(0, 10, "Preferential Selection Rules", ln=True)
+            
+            pdf.set_font("Arial", "", 12)
+            for rule in session_data["preferential_rules"]:
+                pdf.cell(0, 10, f"Field: {rule.field_key} - Preference Maximum: {rule.preference_max}", ln=True)
         
         # Member information
         pdf.ln(10)
@@ -447,14 +545,21 @@ async def generate_pdf_for_session(
             pdf.cell(60, 10, member.joined_at.strftime("%Y-%m-%d %H:%M:%S") if member.joined_at else "N/A", border=1, fill=fill)
             
             # Format attributes as string
+            attr_str = "N/A"
             if member.attributes and isinstance(member.attributes, dict):
                 attr_str = ", ".join([f"{k}: {v}" for k, v in member.attributes.items()])
-                attr_str = attr_str[:30] + "..." if len(attr_str) > 30 else attr_str
-            else:
-                attr_str = "N/A"
                 
-            pdf.cell(60, 10, attr_str, border=1, fill=fill)
-            pdf.ln()
+            # Handle long attribute strings with multi_cell for text wrapping
+            if pdf.get_string_width(attr_str) > 60:
+                current_x = pdf.get_x()
+                current_y = pdf.get_y()
+                
+                # Use multi_cell for text wrapping
+                pdf.multi_cell(60, 10, attr_str, border=1, fill=fill)
+            else:
+                # Use regular cell for single line
+                pdf.cell(60, 10, attr_str, border=1, fill=fill)
+                pdf.ln()
     
     else:
         raise ValueError(f"Unknown session type: {session_type}")
@@ -526,11 +631,29 @@ async def get_group_session_data(session_id: int, db: AsyncSession) -> Dict[str,
     )
     members = members_result.all()
     
+    # Get preferential grouping rules
+    from app.models.preferential_grouping_rule import PreferentialGroupingRule
+    rules_result = await db.exec(
+        select(PreferentialGroupingRule)
+        .where(PreferentialGroupingRule.group_session_id == session_id)
+    )
+    preferential_rules = rules_result.all()
+    
+    # Get field definitions
+    from app.models.field_definition import FieldDefinition
+    field_defs_result = await db.exec(
+        select(FieldDefinition)
+        .where(FieldDefinition.session_id == session_id)
+    )
+    field_definitions = field_defs_result.all()
+    
     return {
         "session": session,
         "access_code": access_code,
         "groups": groups,
-        "members": members
+        "members": members,
+        "preferential_rules": preferential_rules,
+        "field_definitions": field_definitions
     }
 
 
@@ -558,8 +681,17 @@ async def get_selection_session_data(session_id: int, db: AsyncSession) -> Dict[
     )
     members = members_result.all()
     
+    # Get preferential selection rules
+    from app.models.preferential_selection_rule import PreferentialSelectionRule
+    rules_result = await db.exec(
+        select(PreferentialSelectionRule)
+        .where(PreferentialSelectionRule.selection_session_id == session_id)
+    )
+    preferential_rules = rules_result.all()
+    
     return {
         "session": session,
         "access_code": access_code,
-        "members": members
+        "members": members,
+        "preferential_rules": preferential_rules
     }
