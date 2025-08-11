@@ -10,7 +10,7 @@ from app.models.selection_session import SelectionSession
 from app.models.access_code import AccessCode
 from app.models.group_member import GroupMember
 from app.models.selection_member import SelectionMember
-from app.models.groups import Groups
+from app.models.groups import Group
 from app.schemas.dashboard import (
     DashboardOverview, ActiveSessionSummary, AnalyticsData, 
     RecentExport, NotificationItem, SessionStats, UserActivity,
@@ -100,7 +100,7 @@ async def get_dashboard_overview(
         
         # Get completed groups
         completed_groups = await session.exec(
-            select(func.count(Groups.id))
+            select(func.count(Group.id))
             .join(GroupSession)
             .where(GroupSession.host_id == current_user.id)
         )
