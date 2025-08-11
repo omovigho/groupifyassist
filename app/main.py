@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 
 from sentry_sdk import init
 from core.database import init_db
-from routes import auth, group_session, selection_session, export, debug
+from routes import auth, group_session, selection_session, export, debug, dashboard, realtime, settings
 from models.user import User
 from core.dependencies import get_current_user
 #, session, member, group
@@ -25,6 +25,9 @@ app.include_router(group_session.router)
 app.include_router(selection_session.router)
 app.include_router(export.router)
 app.include_router(debug.router)
+app.include_router(dashboard.router)
+app.include_router(realtime.router)
+app.include_router(settings.router)
 '''app.include_router(session.router, prefix="/sessions", tags=["Sessions"])
 app.include_router(member.router, prefix="/members", tags=["Members"])
 app.include_router(group.router, prefix="/groups", tags=["Groups"])
