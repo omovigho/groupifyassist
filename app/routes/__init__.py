@@ -1,7 +1,7 @@
 # app/routes/__init__.py
 from fastapi import APIRouter
-from app.routes.auth import router as auth_router
-from app.routes.group_session import router as group_router
+from .user import router as auth_router
+from .group_session import router as group_router
 
 
 router = APIRouter()
