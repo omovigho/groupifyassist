@@ -503,7 +503,7 @@ async def generate_pdf_for_session(
             
             pdf.set_font("Arial", "", 12)
             for rule in session_data["preferential_rules"]:
-                pdf.cell(0, 10, f"Field: {rule.field_key} - Preference Maximum: {rule.preference_max}", ln=True)
+                pdf.cell(0, 10, f"Field: {rule.field_key} - Preference Maximum: {rule.preference_max_selection}", ln=True)
         
         # Member information
         pdf.ln(10)
