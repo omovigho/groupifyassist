@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 
 from sentry_sdk import init
 from core.database import init_db
-from routes import auth, group_session, selection_session, export, debug, dashboard, realtime, settings
+from routes import user, group_session, selection_session, export, debug, dashboard, realtime, settings
 from models.user import User
 from core.dependencies import get_current_user
 #, session, member, group
@@ -20,7 +20,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="GroupifyAssist API", lifespan=lifespan)
 # Register Routers
-app.include_router(auth.router, tags=["Authentication"])
+app.include_router(user.router, tags=["Authentication"])
 app.include_router(group_session.router)
 app.include_router(selection_session.router)
 app.include_router(export.router)
