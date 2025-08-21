@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 // eslint-disable-next-line no-unused-vars
 import { motion, AnimatePresence } from 'framer-motion';
 import { Users, Menu, X, LogIn, UserPlus } from 'lucide-react';
+import ThreeBackground from '../components/ThreeBackground';
 
 // Landing page focused on a modern hero with animated blended background
 const LandingPage = () => {
@@ -22,16 +23,17 @@ const LandingPage = () => {
 
   return (
     <div className="relative min-h-screen text-gray-900">
-      {/* Embedded minimal custom CSS for background, animated gradient blobs, wave & motion effects */}
-      <style>{`/* === BACKGROUND LAYERS === */
+      {/* Three.js animated background */}
+      <ThreeBackground />
+      
+      {/* Enhanced background gradient overlay for better color scheme */}
+      <div className="fixed inset-0 bg-gradient-to-br from-slate-50/90 via-blue-50/80 to-indigo-100/90 pointer-events-none" />
+      
+      {/* Embedded minimal custom CSS for enhanced styling */}
+      <style>{`/* === ENHANCED BACKGROUND LAYERS === */
       .ga-hero-bg { position: fixed; inset: 0; overflow:hidden; background: radial-gradient(900px 560px at 50% 42%, rgba(248,250,252,0.85), rgba(241,245,249,0.35) 40%, rgba(15,23,42,0.9) 70%); }
-      /* Optional subtle texture / hero reference image (swap or remove) */
-      .ga-hero-bg::before { content:''; position:absolute; inset:0; background-image:linear-gradient(rgba(255,255,255,0.05),rgba(255,255,255,0.05)),url('/visual-ref.png'); background-size:cover; background-position:center; mix-blend-mode:overlay; opacity:.9; pointer-events:none; }
-      /* Animated soft gradient glows */
-      .ga-hero-bg::after { content:''; position:absolute; inset:-25%; background:linear-gradient(120deg, rgba(15,23,42,.65), rgba(2,132,199,.28), rgba(124,58,237,.3), rgba(15,23,42,.65)); background-size:220% 220%; filter:blur(50px); animation:gaGradientMove 20s ease-in-out infinite; pointer-events:none; }
-      @keyframes gaGradientMove { 0%,100%{background-position:0% 50%;} 50%{background-position:100% 50%;} }
-
-      /* === FLOATING PARTICLES === */
+      
+      /* === FLOATING PARTICLES (keeping original as backup) === */
       .ga-particle { position:absolute; border-radius:9999px; filter:blur(8px); opacity:.33; will-change:transform; }
       .ga-float-1 { animation:gaFloat 16s ease-in-out infinite; }
       .ga-float-2 { animation:gaFloat 22s ease-in-out infinite; }
@@ -60,17 +62,12 @@ const LandingPage = () => {
       .ga-skip-link { position:absolute; left:1rem; top:-3rem; background:#fff; color:#111827; padding:.75rem 1.25rem; border-radius:.75rem; font-weight:600; box-shadow:0 4px 18px -2px rgba(0,0,0,.15); transition:top .3s; z-index:50; }
       .ga-skip-link:focus { top:1rem; outline:2px solid #3b82f6; }
 
+      /* Enhanced glass morphism effects */
+      .ga-glass { background: rgba(255, 255, 255, 0.25); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.18); }
+
       /* Respect reduced motion */
       @media (prefers-reduced-motion: reduce) { .ga-float-1, .ga-float-2, .ga-float-3, .ga-hero-bg::after, .ga-wave path, .ga-fade-in { animation:none!important; } }
       `}</style>
-
-      {/* Background & motion layers */}
-      <div aria-hidden className="ga-hero-bg" />
-      <div aria-hidden className="pointer-events-none fixed inset-0 overflow-hidden">
-        <span className="ga-particle ga-float-1 w-24 h-24 bg-cyan-400/25 left-12 top-24" />
-        <span className="ga-particle ga-float-2 w-16 h-16 bg-indigo-400/30 right-16 top-40" />
-        <span className="ga-particle ga-float-3 w-20 h-20 bg-blue-500/25 left-1/3 bottom-24" />
-      </div>
       {/* Animated wave decorative background */}
       <div aria-hidden className="ga-wave-wrap">
         <svg className="ga-wave w-full h-40 opacity-50 mix-blend-overlay" viewBox="0 0 1440 240" fill="none" preserveAspectRatio="none">
@@ -92,7 +89,7 @@ const LandingPage = () => {
       <div className="relative z-10 flex min-h-screen flex-col">
         {/* Header */}
   <header className="px-4 sm:px-6 lg:px-8 py-4" role="banner">
-          <nav className="mx-auto max-w-7xl flex items-center justify-between" aria-label="Global">
+          <nav className="mx-auto max-w-7xl flex items-center justify-between ga-glass rounded-2xl px-6 py-3 shadow-lg" aria-label="Global">
             {/* Logo */}
             <Link to="/" className="inline-flex items-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded-lg">
               <span className="inline-flex items-center justify-center rounded-xl bg-blue-600 p-2 shadow-sm">
@@ -194,7 +191,7 @@ const LandingPage = () => {
         {/* Main hero - centered content */}
         <main id="main-content" className="flex-1 grid place-items-center px-4 sm:px-6 lg:px-8" role="main">
           <section className="ga-fade-in w-full">
-            <div className="mx-auto max-w-3xl text-center">
+            <div className="mx-auto max-w-3xl text-center ga-glass rounded-3xl p-8 shadow-xl">
               {/* Hero heading with motion */}
               <motion.h1
                 initial={{ opacity: 0, y: 20 }}
@@ -208,7 +205,7 @@ const LandingPage = () => {
                 initial={{ opacity: 0, y: 14 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1, duration: 0.7 }}
-                className="mt-4 text-lg sm:text-xl text-gray-600 max-w-2xl mx-auto"
+                className="mt-4 text-lg sm:text-xl text-gray-700 max-w-2xl mx-auto"
               >
                 Effortless Grouping & Smart Selection, Anytime, Anywhere.
               </motion.p>
@@ -230,7 +227,7 @@ const LandingPage = () => {
                   placeholder="Enter Access Code..."
                   value={accessCode}
                   onChange={(e) => setAccessCode(e.target.value)}
-                  className="ga-access-input flex-1 rounded-full border-2 border-white/60 bg-white/80 backdrop-blur px-5 py-3 text-base text-gray-900 placeholder:text-gray-500 shadow focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 outline-none"
+                  className="ga-access-input flex-1 rounded-full border-2 border-white/60 bg-white/90 backdrop-blur px-5 py-3 text-base text-gray-900 placeholder:text-gray-500 shadow-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 outline-none"
                   aria-label="Enter Access Code"
                   autoComplete="off"
                   maxLength={64}
@@ -238,10 +235,10 @@ const LandingPage = () => {
                 <button
                   type="submit"
                   disabled={!accessCode.trim() || submitting}
-                  className="ga-btn-gradient inline-flex justify-center items-center rounded-full px-7 py-3 font-semibold text-white bg-gradient-to-r from-blue-600 via-indigo-600 to-sky-500 shadow hover:shadow-blue-500/30 hover:scale-[1.03] disabled:opacity-60 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/70 focus-visible:ring-offset-2 focus-visible:ring-offset-white transition"
+                  className="ga-btn-gradient inline-flex justify-center items-center rounded-full px-7 py-3 font-semibold text-white bg-gradient-to-r from-blue-600 via-indigo-600 to-sky-500 shadow-lg hover:shadow-blue-500/30 hover:scale-[1.03] disabled:opacity-60 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/70 focus-visible:ring-offset-2 focus-visible:ring-offset-white transition"
                   aria-live="polite"
                 >
-                  {submitting ? 'Joining…' : 'Join Group'}
+                  {submitting ? 'Joining…' : 'Join'}
                 </button>
               </motion.form>
               {/* Helper text */}
@@ -249,7 +246,7 @@ const LandingPage = () => {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.5, duration: 0.7 }}
-                className="mt-3 text-sm text-gray-500"
+                className="mt-3 text-sm text-gray-600"
               >
                 Have a code from an organizer? Paste it above and jump right in.
               </motion.p>
@@ -260,7 +257,7 @@ const LandingPage = () => {
         {/* Footer (sticks to bottom via flex layout) */}
         <footer className="mt-auto px-4 sm:px-6 lg:px-8 py-6 relative" role="contentinfo">
           <div className="mx-auto max-w-7xl text-center text-sm text-gray-600 backdrop-blur-sm/10">
-            © 2025 GroupifyAssist. All rights reserved.
+            Copyright GroupifyAssist
           </div>
         </footer>
       </div>
