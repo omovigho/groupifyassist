@@ -8,7 +8,7 @@ from app.core.cache import store_temp_user, get_temp_user, delete_temp_user, set
 from app.utils.email_utils import send_email, generate_code
 from app.utils.email_template import registration_message, registration_success
 from app.schemas.user import RegisterRequest, RegistrationVerificationRequest
-from app.schemas.auth import LoginRequest
+from app.schemas.user import LoginRequest
 from app.core.security import verify_password, create_access_token
 from typing import Dict, Any
 
