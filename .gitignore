@@ -20,3 +20,6 @@ export_logs/
 download_export.html
 debug_user.py
 app/routes/debug.py
+
+# Node modules
+frontend/node_modules/
