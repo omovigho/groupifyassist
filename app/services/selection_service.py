@@ -11,6 +11,7 @@ from app.models.access_code import AccessCode
 from app.models.selection_member import SelectionMember
 from app.models.selection_log import SelectionLog
 from app.models.field_definition import FieldDefinition
+from app.models.selection_field_definition import SelectionFieldDefinition
 from app.utils.code_generator import generate_group_code
 from datetime import datetime, timedelta, timezone
 from app.models.preferential_selection_rule import PreferentialSelectionRule
@@ -57,13 +58,13 @@ async def create_selection_session(
     session.add(selection_session)
     await session.flush()  # get selection_session.id
 
-    # Create the dynamic fields requested by host
+    # Create the dynamic fields requested by host (separate table for selections)
     for field_key in data.fields:
-        field_def = FieldDefinition(
-            session_id=selection_session.id,
+        field_def = SelectionFieldDefinition(
+            selection_session_id=selection_session.id,
             field_key=field_key,
             label=field_key.capitalize(),     # Optional label auto-generated
-            data_type="string",               # Default all to string
+            data_type="string",              # Default all to string
             required=False,
             options=None
         )
@@ -105,11 +106,23 @@ async def validate_code_and_get_fields(code: str, session: AsyncSession) -> dict
     if not selection_session:
         raise ValueError("Selection session not found")
 
-    fields_result = await session.exec(select(FieldDefinition).where(FieldDefinition.session_id == selection_session.id))
-    field_keys = [field.field_key for field in fields_result.all()]
+    # Fetch fields from selection-specific table; fallback to legacy shared table if needed
+    fields_result = await session.exec(
+        select(SelectionFieldDefinition).where(SelectionFieldDefinition.selection_session_id == selection_session.id)
+    )
+    s_fields = fields_result.all()
+    field_keys = [field.field_key for field in s_fields]
+    if not field_keys:
+        legacy_result = await session.exec(select(FieldDefinition).where(FieldDefinition.session_id == selection_session.id))
+        field_keys = [f.field_key for f in legacy_result.all()]
     
-    # Return a dictionary instead of a list
-    return {"fields": field_keys, "identifier": selection_session.member_identifier}
+    # Return enriched metadata for UI
+    return {
+        "name": selection_session.name,
+        "description": selection_session.description,
+        "fields": field_keys,
+        "identifier": selection_session.member_identifier,
+    }
 
 
 async def join_group(
