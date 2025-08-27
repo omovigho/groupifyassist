@@ -116,7 +116,9 @@ async def validate_code_and_get_fields(code: str, session: AsyncSession) -> dict
     field_keys = [field.field_key for field in fields_result.all()]
     
     # Return a dictionary instead of a list
-    return {"fields": field_keys, "identifier": group_session.member_identifier}
+    return {"name": group_session.name, "description": group_session.description, 
+            "fields": field_keys, "identifier": group_session.member_identifier
+            }
 
 
 async def join_group(
