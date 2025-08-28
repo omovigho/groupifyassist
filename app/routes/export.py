@@ -1,6 +1,6 @@
 # app/routes/export.py
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Response
-from fastapi.responses import StreamingResponse, JSONResponse
+from fastapi.responses import StreamingResponse, JSONResponse, FileResponse
 from sqlmodel.ext.asyncio.session import AsyncSession
 import os
 from pathlib import Path
@@ -120,6 +120,41 @@ async def check_export_directories(current_user: User = Depends(get_current_user
         "status": "success",
         "directories": results
     }
+
+
+@router.get("/download/{file_name}")
+async def download_export_file(
+    file_name: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Download an exported file by name from the server's export directories.
+
+    Only allows files within the configured export folders and with .xlsx or .pdf extensions.
+    """
+    try:
+        if not file_name or (not file_name.lower().endswith('.xlsx') and not file_name.lower().endswith('.pdf')):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unsupported file type")
+
+        # Resolve base directory by extension
+        base_dir = EXCEL_EXPORTS_DIR if file_name.lower().endswith('.xlsx') else PDF_EXPORTS_DIR
+        base_path = Path(base_dir)
+        target_path = base_path / file_name
+
+        # Prevent path traversal
+        try:
+            target_path.resolve().relative_to(base_path.resolve())
+        except Exception:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid file path")
+
+        if not target_path.exists() or not target_path.is_file():
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
+
+        media_type = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' if file_name.lower().endswith('.xlsx') else 'application/pdf'
+        return FileResponse(path=str(target_path), media_type=media_type, filename=file_name)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to download file: {str(e)}")
 
 
 @router.get("/group-session/{session_id}/excel")
