@@ -1,5 +1,5 @@
 # app/routes/auth.py
-from fastapi import APIRouter, HTTPException, status, Depends
+from fastapi import APIRouter, HTTPException, status, Depends, Response, Cookie
 from app.core.database import SessionDep
 from app.core.dependencies import get_current_user
 from app.models.user import User
@@ -7,24 +7,26 @@ from app.services.user_service import AuthService
 from app.schemas.user import (
     RegisterRequest, RegisterResponse, RegistrationVerificationRequest,
     LoginRequest, LoginResponse, ResendVerificationRequest, 
-    ChangePasswordRequest, UserProfileResponse
+    ChangePasswordRequest, UserProfileResponse, VerificationCodeRequest,
+    ForgotPasswordStartRequest, ForgotPasswordResetRequest
 )
+from app.core.verify_session import COOKIE_NAME
 
 router = APIRouter(prefix="/api/user", tags=["Authentication"])
 
 @router.post("/sign-up", response_model=dict)
-async def request_email_verification(request: RegisterRequest, session: SessionDep):
+async def request_email_verification(request: RegisterRequest, session: SessionDep, response: Response):
     """
     Request email verification for user registration
     """
-    return await AuthService.request_email_verification(request, session)
+    return await AuthService.request_email_verification(request, session, response)
 
 @router.post("/email-confirmation", response_model=dict)
-async def verify_user_registration(request: RegistrationVerificationRequest, session: SessionDep):
+async def verify_user_registration(request: VerificationCodeRequest, session: SessionDep, response: Response, vsid: str | None = Cookie(default=None, alias=COOKIE_NAME)):
     """
     Verify user registration with email verification code
     """
-    return await AuthService.verify_user_registration(request, session)
+    return await AuthService.verify_user_registration(request.code, session, response, vsid)
 
 @router.post("/login", response_model=LoginResponse)
 async def login(request: LoginRequest, session: SessionDep):
@@ -34,11 +36,36 @@ async def login(request: LoginRequest, session: SessionDep):
     return await AuthService.login_user(request, session)
 
 @router.post("/resend-verification", response_model=dict)
-async def resend_verification_code(request: ResendVerificationRequest, session: SessionDep):
+async def resend_verification_code(session: SessionDep, response: Response, vsid: str | None = Cookie(default=None, alias=COOKIE_NAME)):
     """
     Resend verification code for email verification
     """
-    return await AuthService.resend_verification_code(request.email, session)
+    return await AuthService.resend_verification_code(vsid, session, response)
+
+@router.get("/verification/session", response_model=dict)
+async def get_verification_session_info(vsid: str | None = Cookie(default=None, alias=COOKIE_NAME)):
+    return await AuthService.get_verification_session_info(vsid)
+
+
+# Forgot password flow
+@router.post("/forgot-password/start", response_model=dict)
+async def forgot_password_start(request: ForgotPasswordStartRequest, session: SessionDep, response: Response):
+    return await AuthService.forgot_password_start(request.email, session, response)
+
+
+@router.post("/forgot-password/verify", response_model=dict)
+async def forgot_password_verify(request: VerificationCodeRequest, session: SessionDep, response: Response, vsid: str | None = Cookie(default=None, alias=COOKIE_NAME)):
+    return await AuthService.forgot_password_verify(request.code, session, response, vsid)
+
+
+@router.post("/forgot-password/resend", response_model=dict)
+async def forgot_password_resend(session: SessionDep, response: Response, vsid: str | None = Cookie(default=None, alias=COOKIE_NAME)):
+    return await AuthService.forgot_password_resend(vsid, session, response)
+
+
+@router.post("/forgot-password/reset", response_model=dict)
+async def forgot_password_reset(request: ForgotPasswordResetRequest, session: SessionDep, response: Response, vsid: str | None = Cookie(default=None, alias=COOKIE_NAME)):
+    return await AuthService.forgot_password_reset(request.new_password, session, response, vsid)
 
 @router.get("/profile", response_model=UserProfileResponse)
 async def get_user_profile(session: SessionDep, current_user: User = Depends(get_current_user)):
