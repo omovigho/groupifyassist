@@ -22,7 +22,7 @@ UPSTASH_REDIS_TOKEN = os.getenv("UPSTASH_REDIS_TOKEN")
 redis = Redis(url=UPSTASH_REDIS_URL, token=UPSTASH_REDIS_TOKEN)
 
 # Set a value with expiration time (in seconds)
-def set_cache(key: str, value: str, timeout: int = 60):
+def set_cache(key: str, value: str, timeout: int = 180):
     redis.set(key, value, ex=timeout)
 
 # Get a cached value
@@ -33,7 +33,7 @@ def get_cache(key: str) -> str | None:
 def delete_cache(key: str):
     redis.delete(key)
 
-def store_temp_user(email: str, data: dict, timeout: int = 60):
+def store_temp_user(email: str, data: dict, timeout: int = 180):
     redis.set(f"pending_user_{email}", json.dumps(data), ex=timeout)
 
 def get_temp_user(email: str) -> dict | None:
