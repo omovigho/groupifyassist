@@ -1,20 +1,32 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { api } from '@/lib/api';
 
 const OTP_LENGTH = 6;
 
 const EmailConfirmationPage = () => {
   const navigate = useNavigate();
-  const location = useLocation();
-  const initialEmail = location?.state?.email || '';
-
-  const [email, setEmail] = useState(initialEmail);
+  const [maskedEmail, setMaskedEmail] = useState('');
   const [otp, setOtp] = useState(Array(OTP_LENGTH).fill(''));
   const [error, setError] = useState('');
   const [secondsLeft, setSecondsLeft] = useState(180); // 3 minutes
   const inputRefs = useRef([]);
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const { data } = await api.get('/user/verification/session');
+        if (!mounted) return;
+        setMaskedEmail(data?.email_masked || '');
+      } catch (e) {
+        setError('Session expired. Please restart signup.');
+      }
+    })();
+    return () => { mounted = false; };
+  }, []);
+
 
   useEffect(() => {
     if (secondsLeft <= 0) return;
@@ -68,16 +80,12 @@ const EmailConfirmationPage = () => {
       setError('Please enter the 6-digit code.');
       return;
     }
-    // TODO: Integrate with backend verification endpoint
-    // Simulate request latency and success/failure
     try {
-      await new Promise((res) => setTimeout(res, 600));
-      // Simulate success for demo
-      const ok = true;
-      if (!ok) throw new Error('The code you entered is incorrect.');
+  await api.post('/user/email-confirmation', { code });
       navigate('/register-success');
     } catch (err) {
-      setError(err?.message || 'Verification failed. Please try again.');
+  const msg = err?.response?.data?.detail || 'Verification failed. Please try again.';
+  setError(msg);
     }
   };
 
@@ -110,20 +118,10 @@ const EmailConfirmationPage = () => {
                 </div>
               )}
 
-              {/* Email */}
-              <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-200 mb-2">Email</label>
-                <Input
-                  id="email"
-                  type="email"
-                  autoComplete="email"
-                  placeholder="you@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  className="h-12 bg-white/5 border-white/15 text-white placeholder:text-gray-400 rounded-lg input-focus-glow"
-                />
-              </div>
+              {/* Masked email display */}
+              {maskedEmail && (
+                <div className="text-sm text-gray-300">Verifying: <span className="font-medium text-white">{maskedEmail}</span></div>
+              )}
 
               {/* OTP */}
               <div>
@@ -144,9 +142,8 @@ const EmailConfirmationPage = () => {
                     />
                   ))}
                 </div>
-                <p className="mt-2 text-xs text-gray-400">Didn’t get the code? <button type="button" className="text-blue-400 hover:text-blue-300 underline underline-offset-4" onClick={()=>{
-                  // TODO: trigger resend via backend
-                  setSecondsLeft(180);
+                <p className="mt-2 text-xs text-gray-400">Didn’t get the code? <button type="button" className="text-blue-400 hover:text-blue-300 underline underline-offset-4" onClick={async ()=>{
+                  try { await api.post('/user/resend-verification'); setSecondsLeft(180);} catch(e){ setError(e?.response?.data?.detail || 'Could not resend.');}
                 }}>Resend</button></p>
               </div>
 
