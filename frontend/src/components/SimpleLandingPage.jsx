@@ -1,16 +1,36 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { api } from '@/lib/api';
 
 const SimpleLandingPage = () => {
   const [accessCode, setAccessCode] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const navigate = useNavigate();
 
-  const handleJoinGroup = (e) => {
+  const handleJoinGroup = async (e) => {
     e.preventDefault();
     if (accessCode.trim()) {
-      console.log(`Joining group with code: ${accessCode}`);
-      // TODO: Implement actual join logic
+      setError('');
+      setLoading(true);
+      try {
+        // Resolve the code to either group or selection and navigate accordingly
+        const { data } = await api.post('/join/resolve', { code: accessCode.trim() });
+        if (data.kind === 'group') {
+          navigate(`/join?code=${encodeURIComponent(accessCode.trim())}`);
+        } else if (data.kind === 'selection') {
+          navigate(`/selection/join?code=${encodeURIComponent(accessCode.trim())}`);
+        } else {
+          setError('Unknown code type');
+        }
+      } catch (e) {
+        const msg = e?.response?.data?.detail || e?.response?.data?.message || e.message || 'Invalid access code';
+        setError(msg);
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -66,12 +86,16 @@ const SimpleLandingPage = () => {
               />
               <Button
                 type="submit"
-                className="h-14 px-8 bg-white text-slate-900 hover:bg-gray-100 rounded-lg font-semibold whitespace-nowrap"
+                disabled={loading}
+                className="h-14 px-8 bg-white text-slate-900 hover:bg-gray-100 disabled:opacity-60 rounded-lg font-semibold whitespace-nowrap"
               >
-                Join Group
+                {loading ? 'Checking…' : 'Join'}
               </Button>
             </div>
           </form>
+          {error && (
+            <p className="text-sm text-red-400 mt-2">{error}</p>
+          )}
           <p className="text-sm text-gray-400">Have a code from an organizer? Paste it above and jump right in.</p>
         </div>
       </div>
