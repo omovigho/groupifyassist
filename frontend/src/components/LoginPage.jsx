@@ -17,10 +17,14 @@ const LoginPage = () => {
     try {
   const { data } = await api.post('/user/login', { email, password });
   if (!data?.access_token) throw new Error('Invalid credentials');
+      try { localStorage.setItem('access_token', data.access_token); } catch {}
       // Optionally store token (e.g., in memory or localStorage) for Authorization header usage
       // localStorage.setItem('access_token', data.access_token);
       setSuccess('Login successful');
-      setTimeout(() => setSuccess(''), 2000);
+      setTimeout(() => {
+        setSuccess('');
+        window.location.replace('/dashboard');
+      }, 500);
     } catch (err) {
   const msg = err?.response?.data?.detail || 'Login failed. Please check your credentials.';
   setError(msg);
