@@ -1,12 +1,11 @@
 import { useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { api } from '@/lib/api';
 
 const ChangePasswordPage = () => {
-  const location = useLocation();
   const navigate = useNavigate();
-  const email = location?.state?.email;
 
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -26,8 +25,7 @@ const ChangePasswordPage = () => {
     }
     try {
       setSubmitting(true);
-      // TODO: integrate with backend to set new password (token/email from state or query)
-      await new Promise((res) => setTimeout(res, 700));
+  await api.post('/user/forgot-password/reset', { new_password: password });
       navigate('/change-password-success');
     } catch (err) {
       setError(err?.message || 'Could not change password, please try again.');
