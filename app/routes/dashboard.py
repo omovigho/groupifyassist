@@ -689,84 +689,150 @@ async def get_session_history(
     session: SessionDep,
     current_user: User = Depends(get_current_user),
     session_type: SessionType = Query(SessionType.ALL),
-    status: Optional[str] = Query(None, description="Filter by status"),
+    session_status: Optional[str] = Query(None, alias="status", description="Filter by status"),
     limit: int = Query(20, ge=1, le=100),
-    offset: int = Query(0, ge=0)
+    offset: int = Query(0, ge=0),
+    q: Optional[str] = Query(None, description="Search by project name contains")
 ):
     """
-    Get historical sessions with filtering and pagination
+    Get historical sessions with filtering, search and pagination
     """
     try:
+        now = datetime.now()
         history = []
-        
+        total_count = 0
+
         if session_type in [SessionType.GROUP, SessionType.ALL]:
-            # Get group session history
-            group_query = (
-                select(GroupSession, AccessCode, func.count(GroupMember.id).label("participant_count"))
+            base_filters = [GroupSession.host_id == current_user.id]
+            if q:
+                base_filters.append(func.lower(GroupSession.name).like(f"%{q.lower()}%"))
+
+            count_stmt = (
+                select(func.count(func.distinct(GroupSession.id)))
                 .join(AccessCode, GroupSession.code_id == AccessCode.id)
-                .outerjoin(GroupMember, GroupSession.id == GroupMember.group_session_id)
-                .where(GroupSession.host_id == current_user.id)
-                .group_by(GroupSession.id, AccessCode.id)
+                .where(and_(*base_filters))
             )
-            
-            if status:
-                group_query = group_query.where(GroupSession.status == status)
-                
-            group_query = group_query.offset(offset).limit(limit)
-            group_result = await session.exec(group_query)
-            
-            for group_session, access_code, participant_count in group_result:
-                history.append({
-                    "id": group_session.id,
-                    "name": group_session.name,
-                    "type": "group",
-                    "status": group_session.status,
-                    "participant_count": participant_count or 0,
-                    "created_at": access_code.created_at,
-                    "expires_at": access_code.expires_at,
-                    "max_group_size": group_session.max_group_size
-                })
-        
-        if session_type in [SessionType.SELECTION, SessionType.ALL]:
-            # Get selection session history
-            selection_query = (
-                select(SelectionSession, AccessCode, func.count(SelectionMember.id).label("participant_count"))
-                .join(AccessCode, SelectionSession.code_id == AccessCode.id)
-                .outerjoin(SelectionMember, SelectionSession.id == SelectionMember.selection_session_id)
-                .where(SelectionSession.host_id == current_user.id)
-                .group_by(SelectionSession.id, AccessCode.id)
+            if session_status:
+                if session_status.lower() == "active":
+                    count_stmt = count_stmt.where(and_(AccessCode.status == "active", AccessCode.expires_at > now))
+                elif session_status.lower() in ("expired", "inactive"):
+                    count_stmt = count_stmt.where(or_(AccessCode.status != "active", AccessCode.expires_at <= now))
+            _res = await session.exec(count_stmt)
+            _val = _res.one()
+            total_group_count = int(_val if isinstance(_val, (int,)) else _val[0])
+            total_count += total_group_count
+
+            data_stmt = (
+                select(GroupSession, AccessCode)
+                .join(AccessCode, GroupSession.code_id == AccessCode.id)
+                .where(and_(*base_filters))
+                .order_by(AccessCode.created_at.desc())
                 .offset(offset)
                 .limit(limit)
             )
-            
-            selection_result = await session.exec(selection_query)
-            
-            for selection_session, access_code, participant_count in selection_result:
+            if session_status:
+                if session_status.lower() == "active":
+                    data_stmt = data_stmt.where(and_(AccessCode.status == "active", AccessCode.expires_at > now))
+                elif session_status.lower() in ("expired", "inactive"):
+                    data_stmt = data_stmt.where(or_(AccessCode.status != "active", AccessCode.expires_at <= now))
+
+            group_rows = (await session.exec(data_stmt)).all()
+            for gs, ac in group_rows:
+                # participant count per session (simple count)
+                _pc_res = await session.exec(select(func.count(GroupMember.id)).where(GroupMember.session_id == gs.id))
+                _pc = _pc_res.one()
+                p_count = int((_pc if isinstance(_pc, (int,)) else _pc[0]) or 0)
+                # groups created per session
+                _gc_res = await session.exec(select(func.count(Group.id)).where(Group.session_id == gs.id))
+                _gc = _gc_res.one()
+                g_created = int((_gc if isinstance(_gc, (int,)) else _gc[0]) or 0)
+                computed_status = "active" if (ac.status == "active" and ac.expires_at > now) else "expired"
                 history.append({
-                    "id": selection_session.id,
-                    "name": selection_session.name,
-                    "type": "selection",
-                    "status": "completed" if access_code.expires_at < datetime.now() else "active",
-                    "participant_count": participant_count or 0,
-                    "created_at": access_code.created_at,
-                    "expires_at": access_code.expires_at,
-                    "max_group_size": selection_session.max_group_size
+                    "id": gs.id,
+                    "name": gs.name,
+                    "type": "group",
+                    "status": computed_status,
+                    "participant_count": int(p_count or 0),
+                    "created_at": ac.created_at,
+                    "expires_at": ac.expires_at,
+                    "max_group_size": gs.max_group_size,
+                    "access_code": ac.code,
+                    "group_created": int(g_created or 0)
                 })
-        
-        # Sort by creation date (most recent first)
+
+        if session_type in [SessionType.SELECTION, SessionType.ALL]:
+            base_filters = [SelectionSession.host_id == current_user.id]
+            if q:
+                base_filters.append(func.lower(SelectionSession.name).like(f"%{q.lower()}%"))
+
+            count_stmt = (
+                select(func.count(func.distinct(SelectionSession.id)))
+                .join(AccessCode, SelectionSession.code_id == AccessCode.id)
+                .where(and_(*base_filters))
+            )
+            if session_status:
+                if session_status.lower() == "active":
+                    count_stmt = count_stmt.where(and_(AccessCode.status == "active", AccessCode.expires_at > now))
+                elif session_status.lower() in ("expired", "inactive"):
+                    count_stmt = count_stmt.where(or_(AccessCode.status != "active", AccessCode.expires_at <= now))
+            _sres = await session.exec(count_stmt)
+            _sval = _sres.one()
+            total_sel_count = int(_sval if isinstance(_sval, (int,)) else _sval[0])
+            total_count += total_sel_count
+
+            data_stmt = (
+                select(SelectionSession, AccessCode)
+                .join(AccessCode, SelectionSession.code_id == AccessCode.id)
+                .where(and_(*base_filters))
+                .order_by(AccessCode.created_at.desc())
+                .offset(offset)
+                .limit(limit)
+            )
+            if session_status:
+                if session_status.lower() == "active":
+                    data_stmt = data_stmt.where(and_(AccessCode.status == "active", AccessCode.expires_at > now))
+                elif session_status.lower() in ("expired", "inactive"):
+                    data_stmt = data_stmt.where(or_(AccessCode.status != "active", AccessCode.expires_at <= now))
+
+            sel_rows = (await session.exec(data_stmt)).all()
+            for ss, ac in sel_rows:
+                # participant count per selection session
+                _part_res = await session.exec(select(func.count(SelectionMember.id)).where(SelectionMember.selection_session_id == ss.id))
+                _part = _part_res.one()
+                participant_count = int((_part if isinstance(_part, (int,)) else _part[0]) or 0)
+                # selected members count
+                _sel_res = await session.exec(select(func.count(SelectionMember.id)).where(
+                    SelectionMember.selection_session_id == ss.id,
+                    SelectionMember.selected == True
+                ))
+                _sel = _sel_res.one()
+                selected_cnt = int((_sel if isinstance(_sel, (int,)) else _sel[0]) or 0)
+                computed_status = "active" if (ac.status == "active" and ac.expires_at > now) else "expired"
+                history.append({
+                    "id": ss.id,
+                    "name": ss.name,
+                    "type": "selection",
+                    "status": computed_status,
+                    "participant_count": int(participant_count or 0),
+                    "created_at": ac.created_at,
+                    "expires_at": ac.expires_at,
+                    "max_group_size": ss.max_group_size,
+                    "access_code": ac.code,
+                    "selected": int(selected_cnt or 0)
+                })
+
         history.sort(key=lambda x: x["created_at"], reverse=True)
-        
         return {
             "sessions": history,
-            "total_count": len(history),
+            "total_count": total_count,
             "offset": offset,
             "limit": limit,
             "filters": {
                 "session_type": session_type.value,
-                "status": status
+                "status": session_status,
+                "q": q
             }
         }
-        
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
