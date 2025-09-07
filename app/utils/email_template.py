@@ -21,7 +21,7 @@ def registration_message(code: str, year: int) -> str:
                     <h3>Hello,</h3>
                     <p>Thank you for signing up with <strong>GroupifyAssist</strong>! To complete your registration, please enter the verification code below:</p>
                     <p style="font-size: 24px; font-weight: bold; color: #4caf50; text-align: center;">{ code }</p>
-                    <p>This code will expire in 10 minutes. If you did not request this, please ignore this message.</p>
+                    <p>This code will expire in 3 minutes. If you did not request this, please ignore this message.</p>
                     <p>Thank you,<br><strong>The GroupifyAssist Team</strong></p>
                     </td>
                 </tr>
