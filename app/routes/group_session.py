@@ -23,6 +23,8 @@ async def create_group(
     try:
         group = await create_group_session(data, current_user.id, session)
         return group
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
