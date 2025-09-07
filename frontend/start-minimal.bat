@@ -1,0 +1,19 @@
+@echo off
+echo Fixing npm dependencies...
+
+echo Backing up current package.json...
+copy package.json package.json.backup
+
+echo Using minimal package.json...
+copy package-minimal.json package.json
+
+echo Clearing npm cache...
+npm cache clean --force
+
+echo Installing minimal dependencies...
+npm install
+
+echo Starting development server...
+npm run dev
+
+pause
