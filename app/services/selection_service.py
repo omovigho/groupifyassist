@@ -23,6 +23,9 @@ async def create_selection_session(
     host_id: int,
     session: AsyncSession
 ) -> SelectionSessionRead:
+    # Enforce max expiration of 7 days (10080 minutes)
+    if data.expires_in is not None and data.expires_in > 10080:
+        raise ValueError("Expiration cannot exceed 7 days (10080 minutes). Please reduce the expiration time.")
     # Generate a unique join code
     code = generate_group_code()
 
