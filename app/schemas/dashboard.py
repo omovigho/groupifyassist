@@ -83,3 +83,16 @@ class UserActivity(BaseModel):
     session_type: str
     participant_identifier: Optional[str]
     timestamp: datetime
+
+
+class HostStats(BaseModel):
+    """Summary stats for the current host account."""
+    active_codes_total: int
+    active_codes: List[str]
+    total_groups: int
+    total_selections: int
+
+
+class DashboardStats(HostStats):
+    """Alias schema for dashboard stats; same fields as HostStats."""
+    pass
