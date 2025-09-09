@@ -229,7 +229,7 @@ async def join_group(
 
 async def select_members(
     data: SelectMembersRequest,
-    host_id: int,  # Add host_id parameter to verify ownership
+    host_id: int, 
     db_session: AsyncSession
 ) -> SelectionResult:
     """
@@ -309,8 +309,6 @@ async def select_members(
         preferential_max = remaining_to_select  # Default to all remaining
         
         # Handle two types of rules:
-        # 1. Rules where field_key is an actual field (like "gender") - match by field and value
-        # 2. Rules where field_key is a specific value (like "female") - direct match
         for rule in pref_rules:
             
             # Direct match with the value (e.g., rule.field_key = "female")
