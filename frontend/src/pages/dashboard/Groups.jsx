@@ -29,7 +29,7 @@ const Groups = () => {
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-xl font-semibold">Groups</h1>
         <div className="flex items-center gap-2">
-          <input value={q} onChange={(e)=>{ setPage(0); setQ(e.target.value); }} placeholder="Search..." className="h-9 rounded-md border border-slate-300 px-3 text-sm" />
+          <input value={q} onChange={(e)=>{ setPage(0); setQ(e.target.value); }} placeholder="Search..." className="h-9 rounded-md border border-slate-300 px-3 text-sm bg-white dark:bg-white text-black dark:text-black placeholder:text-slate-400" />
           <Link to="/dashboard/groups/create" className="rounded-md bg-[#0A2540] text-white text-sm px-3 py-2">+ New Grouping</Link>
         </div>
       </div>

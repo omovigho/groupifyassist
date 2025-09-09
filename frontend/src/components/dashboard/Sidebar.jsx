@@ -7,7 +7,8 @@ const Sidebar = () => {
     { to: '/dashboard/groups', label: 'Groups', icon: Users },
     { to: '/dashboard/selections', label: 'Selections', icon: Target },
     { to: '/dashboard/exports', label: 'Exports', icon: FileDown },
-    { to: '/dashboard/settings', label: 'Settings', icon: Settings },
+  { to: '/dashboard/settings', label: 'Settings', icon: Settings },
+  { to: '/logout', label: 'Logout', icon: Settings },
   ];
 
   return (

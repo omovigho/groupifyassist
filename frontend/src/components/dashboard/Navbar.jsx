@@ -9,8 +9,10 @@ const Navbar = () => {
     {to: '/dashboard', label: 'Dashboard'},
     {to: '/dashboard/groups', label: 'Groups'},
     {to: '/dashboard/selections', label: 'Selections'},
+  {to: '/dashboard/selections/make', label: 'Make Selection'},
     {to: '/dashboard/exports', label: 'Reports'},
-    {to: '/dashboard/settings', label: 'Settings'},
+  {to: '/dashboard/settings', label: 'Settings'},
+  {to: '/logout', label: 'Logout'},
   ];
   return (
   <header className="sticky top-0 z-40 w-full border-b border-slate-200 bg-white dark:bg-slate-900/60 dark:border-slate-800 backdrop-blur supports-[backdrop-filter]:bg-white/70 supports-[backdrop-filter]:dark:bg-slate-900/60">
@@ -18,7 +20,7 @@ const Navbar = () => {
         <div className="flex items-center gap-3">
           <Link to="/dashboard" className="flex items-center gap-2">
             <div className="h-8 w-8 rounded-lg bg-[#0A2540]" />
-            <span className="font-semibold text-[#0A2540]">GroupifyAssist</span>
+            <span className="font-semibold text-[#0A2540] dark:text-white">GroupifyAssist</span>
           </Link>
           <nav className="hidden md:flex items-center gap-4 ml-8 text-sm text-slate-600 dark:text-slate-300">
             {items.map((item) => (

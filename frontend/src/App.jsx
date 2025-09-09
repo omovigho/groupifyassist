@@ -23,6 +23,9 @@ import CreateGroup from './pages/dashboard/CreateGroup';
 import CreateSelection from './pages/dashboard/CreateSelection';
 import ProjectDetail from './pages/dashboard/ProjectDetail';
 import CreateSuccess from './pages/dashboard/CreateSuccess';
+import MakeSelection from './pages/dashboard/MakeSelection';
+import ClearSelection from './pages/dashboard/ClearSelection';
+import LogoutPage from './components/LogoutPage';
 
 function App() {
   return (
@@ -100,10 +103,26 @@ function App() {
             }
           />
           <Route
+            path="/dashboard/selections/make"
+            element={
+              <ProtectedRoute>
+                <MakeSelection />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/dashboard/exports"
             element={
               <ProtectedRoute>
                 <Exports />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/selections/clear"
+            element={
+              <ProtectedRoute>
+                <ClearSelection />
               </ProtectedRoute>
             }
           />
@@ -123,6 +142,7 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route path="/logout" element={<LogoutPage />} />
         </Routes>
       </div>
     </Router>
