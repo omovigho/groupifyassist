@@ -1,7 +1,9 @@
 # app/routes/dashboard.py
+# pyright: reportGeneralTypeIssues=false, reportOptionalMemberAccess=false, reportAttributeAccessIssue=false, reportOperatorIssue=false, reportCallIssue=false
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlmodel.ext.asyncio.session import AsyncSession
-from sqlalchemy import func, select, and_, or_
+from sqlalchemy import func, and_, or_
+from sqlmodel import select
 from app.core.dependencies import get_current_user
 from app.core.database import get_session, SessionDep
 from app.models.user import User
@@ -14,7 +16,7 @@ from app.models.groups import Group
 from app.schemas.dashboard import (
     DashboardOverview, ActiveSessionSummary, AnalyticsData, 
     RecentExport, NotificationItem, SessionStats, UserActivity,
-    GeographicData, SessionTrend, ParticipantEngagement
+    GeographicData, SessionTrend, ParticipantEngagement, HostStats, DashboardStats
 )
 from typing import List, Optional
 from datetime import datetime, timedelta
@@ -35,96 +37,58 @@ class SessionType(str, Enum):
     SELECTION = "selection"
     ALL = "all"
 
-@router.get("/overview", response_model=DashboardOverview)
-async def get_dashboard_overview(
+
+## Removed legacy endpoint /host-stats
+
+
+@router.get("/stats", response_model=DashboardStats)
+async def get_dashboard_stats(
     session: SessionDep,
     current_user: User = Depends(get_current_user)
 ):
-    """
-    Get comprehensive dashboard overview including key metrics and statistics
+    """New, simplified dashboard stats endpoint.
+
+    Returns only:
+      - active_codes_total (number of non-expired codes for this host)
+      - active_codes (list of unique active codes)
+      - total_groups (count of group sessions for this host)
+      - total_selections (count of selection sessions for this host)
     """
     try:
-        # Get active sessions count
-        active_group_sessions = await session.exec(
-            select(func.count(GroupSession.id))
-            .join(AccessCode)
-            .where(
-                and_(
-                    GroupSession.host_id == current_user.id,
-                    GroupSession.status == "active",
-                    AccessCode.expires_at > datetime.now()
-                )
-            )
+        now = datetime.now()
+        # Active codes from AccessCode directly, restricted to host and non-expired
+        access_codes_stmt = (
+            select(AccessCode)
+            .where(AccessCode.host_id == current_user.id)
+            .where(AccessCode.expires_at > now)
+            .where(AccessCode.status == "active")
         )
-        active_group_count = active_group_sessions.one()
-        
-        active_selection_sessions = await session.exec(
-            select(func.count(SelectionSession.id))
-            .join(AccessCode)
-            .where(
-                and_(
-                    SelectionSession.host_id == current_user.id,
-                    AccessCode.expires_at > datetime.now()
-                )
-            )
+        codes_res = await session.exec(access_codes_stmt)
+        codes = [ac.code for ac in codes_res.all()]
+
+        # Totals
+        tg_res = await session.exec(
+            select(func.count(GroupSession.id)).where(GroupSession.host_id == current_user.id)
         )
-        active_selection_count = active_selection_sessions.one()
-        
-        # Get total participants across all user's sessions
-        group_participants = await session.exec(
-            select(func.count(GroupMember.id))
-            .join(GroupSession)
-            .where(GroupSession.host_id == current_user.id)
+        _tg = tg_res.one()
+        ts_res = await session.exec(
+            select(func.count(SelectionSession.id)).where(SelectionSession.host_id == current_user.id)
         )
-        group_participant_count = group_participants.one()
-        
-        selection_participants = await session.exec(
-            select(func.count(SelectionMember.id))
-            .join(SelectionSession)
-            .where(SelectionSession.host_id == current_user.id)
+        _ts = ts_res.one()
+
+        return DashboardStats(
+            active_codes_total=len(codes),
+            active_codes=list({*codes}),
+            total_groups=int((_tg if isinstance(_tg, (int,)) else _tg[0]) or 0),
+            total_selections=int((_ts if isinstance(_ts, (int,)) else _ts[0]) or 0),
         )
-        selection_participant_count = selection_participants.one()
-        
-        # Get total sessions created
-        total_group_sessions = await session.exec(
-            select(func.count(GroupSession.id))
-            .where(GroupSession.host_id == current_user.id)
-        )
-        total_group_count = total_group_sessions.one()
-        
-        total_selection_sessions = await session.exec(
-            select(func.count(SelectionSession.id))
-            .where(SelectionSession.host_id == current_user.id)
-        )
-        total_selection_count = total_selection_sessions.one()
-        
-        # Get completed groups
-        completed_groups = await session.exec(
-            select(func.count(Group.id))
-            .join(GroupSession)
-            .where(GroupSession.host_id == current_user.id)
-        )
-        completed_groups_count = completed_groups.one()
-        
-        # Calculate success rate
-        total_sessions = total_group_count + total_selection_count
-        success_rate = (completed_groups_count / total_sessions * 100) if total_sessions > 0 else 0
-        
-        return DashboardOverview(
-            active_sessions=active_group_count + active_selection_count,
-            total_participants=group_participant_count + selection_participant_count,
-            sessions_created=total_sessions,
-            success_rate=round(success_rate, 2),
-            completed_groups=completed_groups_count,
-            avg_session_duration=0,  # Will be calculated with session timestamps
-            user_country=current_user.country
-        )
-        
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error fetching dashboard overview: {str(e)}"
+            detail=f"Error fetching dashboard stats: {str(e)}",
         )
+
+## Removed legacy endpoint /overview per new simplified stats API
 
 @router.get("/sessions/active", response_model=List[ActiveSessionSummary])
 async def get_active_sessions(
@@ -140,64 +104,57 @@ async def get_active_sessions(
         active_sessions = []
         
         if session_type in [SessionType.GROUP, SessionType.ALL]:
-            # Get active group sessions
-            group_sessions_query = (
-                select(GroupSession, AccessCode, func.count(GroupMember.id).label("participant_count"))
-                .join(AccessCode, GroupSession.code_id == AccessCode.id)
-                .outerjoin(GroupMember, GroupSession.id == GroupMember.group_session_id)
-                .where(
-                    and_(
-                        GroupSession.host_id == current_user.id,
-                        GroupSession.status == "active",
-                        AccessCode.expires_at > datetime.now()
-                    )
-                )
-                .group_by(GroupSession.id, AccessCode.id)
-                .limit(limit)
-            )
-            
-            group_sessions_result = await session.exec(group_sessions_query)
-            for group_session, access_code, participant_count in group_sessions_result:
+            # Get group sessions for this host and compute active status via access code
+            gs_rows = (await session.exec(
+                select(GroupSession).where(GroupSession.host_id == current_user.id)
+            )).all()
+            now_ts = datetime.now()
+            for gs in gs_rows:
+                ac = await session.get(AccessCode, gs.code_id)
+                if not ac:
+                    continue
+                if ac.expires_at <= now_ts:
+                    continue
+                # participant count
+                pcount = (await session.exec(
+                    select(func.count(GroupMember.id)).where(GroupMember.session_id == gs.id)
+                )).one()
                 active_sessions.append(ActiveSessionSummary(
-                    id=group_session.id,
-                    name=group_session.name,
+                    id=int(gs.id or 0),
+                    name=gs.name,
                     type="group",
-                    access_code=access_code.code,
-                    participant_count=participant_count or 0,
-                    max_participants=None,  # Group sessions don't have max participants
+                    access_code=ac.code,
+                    participant_count=int((pcount if isinstance(pcount, int) else pcount[0]) or 0),
+                    max_participants=None,
                     status="active",
-                    created_at=access_code.created_at,
-                    expires_at=access_code.expires_at
+                    created_at=ac.created_at,
+                    expires_at=ac.expires_at
                 ))
         
         if session_type in [SessionType.SELECTION, SessionType.ALL]:
-            # Get active selection sessions
-            selection_sessions_query = (
-                select(SelectionSession, AccessCode, func.count(SelectionMember.id).label("participant_count"))
-                .join(AccessCode, SelectionSession.code_id == AccessCode.id)
-                .outerjoin(SelectionMember, SelectionSession.id == SelectionMember.selection_session_id)
-                .where(
-                    and_(
-                        SelectionSession.host_id == current_user.id,
-                        AccessCode.expires_at > datetime.now()
-                    )
-                )
-                .group_by(SelectionSession.id, AccessCode.id)
-                .limit(limit)
-            )
-            
-            selection_sessions_result = await session.exec(selection_sessions_query)
-            for selection_session, access_code, participant_count in selection_sessions_result:
+            ss_rows = (await session.exec(
+                select(SelectionSession).where(SelectionSession.host_id == current_user.id)
+            )).all()
+            now_ts = datetime.now()
+            for ss in ss_rows:
+                ac = await session.get(AccessCode, ss.code_id)
+                if not ac:
+                    continue
+                if ac.expires_at <= now_ts:
+                    continue
+                pcount = (await session.exec(
+                    select(func.count(SelectionMember.id)).where(SelectionMember.selection_session_id == ss.id)
+                )).one()
                 active_sessions.append(ActiveSessionSummary(
-                    id=selection_session.id,
-                    name=selection_session.name,
+                    id=int(ss.id or 0),
+                    name=ss.name,
                     type="selection",
-                    access_code=access_code.code,
-                    participant_count=participant_count or 0,
-                    max_participants=selection_session.max_group_size,
+                    access_code=ac.code,
+                    participant_count=int((pcount if isinstance(pcount, int) else pcount[0]) or 0),
+                    max_participants=ss.max_group_size,
                     status="active",
-                    created_at=access_code.created_at,
-                    expires_at=access_code.expires_at
+                    created_at=ac.created_at,
+                    expires_at=ac.expires_at
                 ))
         
         # Sort by creation date (most recent first)
@@ -399,7 +356,7 @@ async def get_notifications(
         # Check for sessions about to expire
         expiring_sessions_query = (
             select(GroupSession, AccessCode)
-            .join(AccessCode)
+            .join(AccessCode, GroupSession.code_id == AccessCode.id)
             .where(
                 and_(
                     GroupSession.host_id == current_user.id,
@@ -481,10 +438,10 @@ async def get_user_activity(
             .where(
                 and_(
                     GroupSession.host_id == current_user.id,
-                    GroupMember.created_at >= start_date
+                    GroupMember.joined_at >= start_date
                 )
             )
-            .order_by(GroupMember.created_at.desc())
+            .order_by(GroupMember.joined_at.desc())
             .limit(limit)
         )
         
@@ -496,8 +453,8 @@ async def get_user_activity(
                 description=f"New participant joined '{group_session.name}'",
                 session_name=group_session.name,
                 session_type="group",
-                participant_identifier=getattr(member, 'identifier', 'Unknown'),
-                timestamp=member.created_at
+                participant_identifier=getattr(member, 'member_identifier', 'Unknown'),
+                timestamp=getattr(member, 'joined_at', None)
             ))
         
         # Get recent selection member joins
@@ -507,10 +464,10 @@ async def get_user_activity(
             .where(
                 and_(
                     SelectionSession.host_id == current_user.id,
-                    SelectionMember.created_at >= start_date
+                    SelectionMember.joined_at >= start_date
                 )
             )
-            .order_by(SelectionMember.created_at.desc())
+            .order_by(SelectionMember.joined_at.desc())
             .limit(limit)
         )
         
@@ -522,8 +479,8 @@ async def get_user_activity(
                 description=f"New participant joined '{selection_session.name}'",
                 session_name=selection_session.name,
                 session_type="selection",
-                participant_identifier=getattr(member, 'identifier', 'Unknown'),
-                timestamp=member.created_at
+                participant_identifier=getattr(member, 'member_identifier', 'Unknown'),
+                timestamp=getattr(member, 'joined_at', None)
             ))
         
         # Sort by timestamp (most recent first) and limit
@@ -625,18 +582,17 @@ async def get_session_participants(
             # Get group participants
             participants_query = (
                 select(GroupMember)
-                .where(GroupMember.group_session_id == session_id)
+                .where(GroupMember.session_id == session_id)
                 .offset(offset)
                 .limit(limit)
             )
-            
             participants_result = await session.exec(participants_query)
             for participant in participants_result:
                 participants.append({
                     "id": participant.id,
-                    "identifier": getattr(participant, 'identifier', 'Unknown'),
+                    "identifier": getattr(participant, 'member_identifier', 'Unknown'),
                     "group_id": getattr(participant, 'group_id', None),
-                    "joined_at": participant.created_at,
+                    "joined_at": getattr(participant, 'joined_at', None),
                     "data": getattr(participant, 'member_data', {})
                 })
                 
@@ -656,15 +612,14 @@ async def get_session_participants(
                 .offset(offset)
                 .limit(limit)
             )
-            
             participants_result = await session.exec(participants_query)
             for participant in participants_result:
                 participants.append({
                     "id": participant.id,
-                    "identifier": getattr(participant, 'identifier', 'Unknown'),
-                    "is_selected": getattr(participant, 'is_selected', False),
-                    "joined_at": participant.created_at,
-                    "data": getattr(participant, 'member_data', {})
+            "identifier": getattr(participant, 'member_identifier', 'Unknown'),
+            "is_selected": getattr(participant, 'selected', False),
+            "joined_at": getattr(participant, 'joined_at', None),
+            "data": getattr(participant, 'attributes', {})
                 })
         
         return {
