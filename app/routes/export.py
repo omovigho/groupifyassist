@@ -21,8 +21,8 @@ from io import BytesIO
 router = APIRouter(prefix="/api/export", tags=["Export"])
 
 # Define export directories as constants to ensure consistency
-EXCEL_EXPORTS_DIR = "C:/Users/DANIEL/Desktop/animation/Projects/groupifyassist/groupifyassist/excel_exports"
-PDF_EXPORTS_DIR = "C:/Users/DANIEL/Desktop/animation/Projects/groupifyassist/groupifyassist/pdf_exports"
+EXCEL_EXPORTS_DIR = "C:/Users/AGOFURE ANTHONY/Desktop/New folder/groupifyassist/groupifyassist/excel_exports"
+PDF_EXPORTS_DIR = "C:/Users/AGOFURE ANTHONY/Desktop/New folder/groupifyassist/groupifyassist/pdf_exports"
 
 # Create directories if they don't exist
 Path(EXCEL_EXPORTS_DIR).mkdir(parents=True, exist_ok=True)
