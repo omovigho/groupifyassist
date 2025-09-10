@@ -75,7 +75,7 @@ const SimpleLandingPage = () => {
             </h1>
           </div>
           <p className="text-base md:text-xl text-gray-300 mb-10 max-w-2xl mx-auto">
-            Effortless Grouping & Smart Selection, Anytime, Anywhere.
+            Automated Grouping & Effortless Selection, Anytime, Anywhere.
           </p>
           <form onSubmit={handleJoinGroup} className="max-w-2xl mx-auto mb-4">
             <div className="form flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3">
