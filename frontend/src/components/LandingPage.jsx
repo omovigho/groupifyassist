@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/simple-button';
 import { Input } from '@/components/ui/simple-input';
 import { Users, ArrowRight, LogIn, UserPlus } from '@/components/ui/simple-icons';
+// Logo temporarily removed
 import { AnimatedBackground } from '@/components/AnimatedBackground';
 import { ParticleField, WaveEffect } from '@/components/AnimatedEffects';
 
@@ -57,14 +58,9 @@ const LandingPage = () => {
         transition={{ duration: 0.6 }}
       >
         <nav className="max-w-7xl mx-auto flex items-center justify-between">
-          {/* Logo */}
-          <div className="flex items-center space-x-3">
-            <div className="p-2 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl shadow-lg">
-              <Users className="w-6 h-6 text-white" />
-            </div>
-            <span className="text-xl font-bold text-gradient">
-              GroupifyAssist
-            </span>
+          {/* Title */}
+          <div className="flex items-center">
+            <span className="text-xl font-bold text-gradient">GroupifyAssist</span>
           </div>
 
           {/* Navigation Buttons */}

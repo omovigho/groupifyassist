@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { api } from '@/lib/api';
+// Logo temporarily removed
 
 // Simple utility to debounce rapid calls
 function useDebouncedValue(value, delay = 150) {
@@ -117,6 +118,7 @@ const SignupPage = () => {
 
       {/* Header */}
       <header className="relative z-10 px-6 pt-10 text-center">
+  <div className="flex items-center justify-center mb-5" />
         <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-white">
           Create your GroupifyAssist account
         </h1>

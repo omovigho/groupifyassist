@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useState } from 'react';
 import { api } from '@/lib/api';
+// Logo temporarily removed
 
 const LoginPage = () => {
   const [email, setEmail] = useState('');
@@ -39,6 +40,7 @@ const LoginPage = () => {
       </div>
 
       <header className="relative z-10 px-6 pt-10 text-center">
+  <div className="flex items-center justify-center mb-4" />
         <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-white">Welcome back</h1>
         <p className="mt-3 text-gray-300 max-w-2xl mx-auto">Sign in to continue to GroupifyAssist.</p>
       </header>

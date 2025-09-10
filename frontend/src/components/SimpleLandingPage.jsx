@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { api } from '@/lib/api';
+// Logo temporarily removed
 
 const SimpleLandingPage = () => {
   const [accessCode, setAccessCode] = useState('');
@@ -65,6 +66,9 @@ const SimpleLandingPage = () => {
       <div className="absolute inset-0 flex items-center justify-center px-6 text-center z-10">
         <div className="w-full max-w-4xl">
           <div className="mb-8">
+            <div className="flex items-center justify-center gap-3 mb-3">
+              <span className="sr-only">GroupifyAssist</span>
+            </div>
             <h1 className="font-bold leading-tight text-white tracking-tight text-[2.75rem] md:text-[4rem]">
               <span className="block">Welcome to</span>
               <span className="block">GroupifyAssist</span>

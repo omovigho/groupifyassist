@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, NavLink } from 'react-router-dom';
 import { User, Menu, X } from 'lucide-react';
 import ThemeToggle from '@/components/ThemeToggle';
+// Logo temporarily removed
 
 const Navbar = () => {
   const [open, setOpen] = useState(false);
@@ -18,8 +19,7 @@ const Navbar = () => {
   <header className="sticky top-0 z-40 w-full border-b border-slate-200 bg-white dark:bg-slate-900/60 dark:border-slate-800 backdrop-blur supports-[backdrop-filter]:bg-white/70 supports-[backdrop-filter]:dark:bg-slate-900/60">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Link to="/dashboard" className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-lg bg-[#0A2540]" />
+          <Link to="/dashboard" className="flex items-center">
             <span className="font-semibold text-[#0A2540] dark:text-white">GroupifyAssist</span>
           </Link>
           <nav className="hidden md:flex items-center gap-4 ml-8 text-sm text-slate-600 dark:text-slate-300">
