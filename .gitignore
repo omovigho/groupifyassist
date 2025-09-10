@@ -23,3 +23,9 @@ app/routes/debug.py
 
 # Node modules
 frontend/node_modules/
+
+# Scripts
+Scripts/
+
+# Lib
+Lib/
