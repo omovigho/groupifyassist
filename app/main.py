@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Depends
+from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
-from sentry_sdk import init
 from core.database import init_db
 from routes import user, group_session, selection_session, export, debug, dashboard, realtime, settings
 from routes import join_resolver
@@ -10,16 +10,36 @@ from core.dependencies import get_current_user
 #, session, member, group
 #app = FastAPI(title="GroupifyAssist API")
 
-@asynccontextmanager
+"""@asynccontextmanager
 async def lifespan(app: FastAPI):
     # Load the ML model
-    create_db = await init_db()
+    await init_db()
     yield
     # Clean up the ML models and release the resources
-    #await create_db.clear()
+    await create_db.clear()"""
 
 
-app = FastAPI(title="GroupifyAssist API", lifespan=lifespan)
+app = FastAPI(title="GroupifyAssist API")
+#app = FastAPI(title="GroupifyAssist API", lifespan=lifespan)
+
+# CORS configuration: restrict to hosted frontend domain
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "https://groupifyassist.vercel.app",
+        "https://groupifyassist.vercel.app/",
+        "http://localhost:5173"
+    ],
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=[
+        "Authorization",
+        "Content-Type",
+        "X-Requested-With",
+        "Accept",
+        "Origin",
+    ],
+)
 # Register Routers
 app.include_router(user.router, tags=["Authentication"])
 app.include_router(group_session.router)
