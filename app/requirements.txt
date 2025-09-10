@@ -16,3 +16,4 @@ openpyxl
 xlsxwriter
 fpdf
 fpdf2
+pydantic[email]
