@@ -107,9 +107,10 @@ const ResultsActions = ({ id, type }) => {
   const download = async (format) => {
     try {
       if (!code.trim()) return setMsg('Provide access code');
+      const base = (import.meta?.env?.VITE_API_BASE_URL) || 'https://groupifyassist.onrender.com';
       const url = type === 'group'
-        ? `/api/export/group-session/${id}/${format}?access_code=${encodeURIComponent(code.trim())}`
-        : `/api/export/selection-session/${id}/${format}?access_code=${encodeURIComponent(code.trim())}`;
+        ? `${base}/export/group-session/${id}/${format}?access_code=${encodeURIComponent(code.trim())}`
+        : `${base}/export/selection-session/${id}/${format}?access_code=${encodeURIComponent(code.trim())}`;
       window.open(url, '_blank');
       setMsg('');
     } catch (e) {
