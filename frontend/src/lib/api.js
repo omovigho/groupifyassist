@@ -14,6 +14,10 @@ export const api = axios.create({
 
 // Attach Authorization header if token exists
 api.interceptors.request.use((config) => {
+  // Ensure relative paths so baseURL '/api' isn't dropped when url starts with '/'
+  if (config.url && config.url.startsWith('/')) {
+    config.url = config.url.replace(/^\/+/, '');
+  }
   const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
   if (token) {
     config.headers = config.headers || {};
