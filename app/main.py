@@ -27,18 +27,13 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "https://groupifyassist.vercel.app",
-        "https://groupifyassist.vercel.app/",
-        "http://localhost:5173"
+        "http://localhost:5173",
     ],
+    # Also allow Vercel preview deployments if needed
+    allow_origin_regex=r"https://.*\.vercel\.app$",
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=[
-        "Authorization",
-        "Content-Type",
-        "X-Requested-With",
-        "Accept",
-        "Origin",
-    ],
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 # Register Routers
 app.include_router(user.router, tags=["Authentication"])
