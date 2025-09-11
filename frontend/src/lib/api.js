@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const DEFAULT_API = 'https://groupifyassist.onrender.com';
+const DEFAULT_API = 'https://groupifyassist.onrender.com/api/';
 // Prefer Vite env if provided, else default to Render backend
 const BASE_URL = (import.meta?.env?.VITE_API_BASE_URL) || DEFAULT_API;
 
