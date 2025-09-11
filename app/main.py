@@ -23,7 +23,21 @@ app = FastAPI(title="GroupifyAssist API")
 #app = FastAPI(title="GroupifyAssist API", lifespan=lifespan)
 
 # CORS configuration: restrict to hosted frontend domain
+origins = [
+    "https://groupifyassist.vercel.app",
+     "http://localhost:5173",
+    "http://localhost",
+    "http://localhost:8080",
+]
+
 app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+'''app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "https://groupifyassist.vercel.app",
@@ -34,7 +48,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-)
+)'''
 # Register Routers
 app.include_router(user.router, tags=["Authentication"])
 app.include_router(group_session.router)
