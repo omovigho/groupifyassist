@@ -71,7 +71,7 @@ async def on_startup():
 
 # Health check
 @app.get("/")
-async def root(current_user: User = Depends(get_current_user)):
+async def root():
     return {"message": "Welcome to GroupifyAssist API"}
     
 # Debug endpoint to check current user
