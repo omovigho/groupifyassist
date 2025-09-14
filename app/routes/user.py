@@ -29,11 +29,11 @@ async def verify_user_registration(request: VerificationCodeRequest, session: Se
     return await AuthService.verify_user_registration(request.code, session, response, vsid)
 
 @router.post("/login", response_model=LoginResponse)
-async def login(request: LoginRequest, session: SessionDep):
+async def login(request: LoginRequest, session: SessionDep, response: Response):
     """
-    Authenticate user and return access token
+    Authenticate user and return access token, plus set HttpOnly cookie.
     """
-    return await AuthService.login_user(request, session)
+    return await AuthService.login_user(request, session, response)
 
 @router.post("/resend-verification", response_model=dict)
 async def resend_verification_code(session: SessionDep, response: Response, vsid: str | None = Cookie(default=None, alias=COOKIE_NAME)):
@@ -91,7 +91,12 @@ async def change_password(
     )
 
 @router.post("/logout", response_model=dict)
-async def logout(current_user: User = Depends(get_current_user)):
+async def logout(response: Response, _: User = Depends(get_current_user)):
+    # Clear auth cookie
+    import os
+    from app.core.verify_session import COOKIE_PATH_API, COOKIE_DOMAIN
+    auth_cookie_name = os.getenv("AUTH_COOKIE_NAME", "access_token")
+    response.delete_cookie(key=auth_cookie_name, path=COOKIE_PATH_API, domain=COOKIE_DOMAIN or None)
     return {"message": "Logged out successfully"}
 
 @router.get("/verify-token", response_model=dict)

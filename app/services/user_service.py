@@ -4,15 +4,19 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel import select
 from passlib.context import CryptContext
 from app.models.user import User
-from app.core.cache import store_temp_user, get_temp_user, delete_temp_user, set_cache, get_cache, delete_cache
+from app.core.cache import store_temp_user, get_temp_user, delete_temp_user
 from app.utils.email_utils import send_email, generate_code
 from app.utils.email_template import registration_message, registration_success
-from app.schemas.user import RegisterRequest, RegistrationVerificationRequest
+from app.schemas.user import RegisterRequest
 from app.schemas.user import LoginRequest
-from app.core.security import verify_password, create_access_token, mask_email
+from app.core.security import verify_password, create_access_token, mask_email, ACCESS_TOKEN_EXPIRE_MINUTES
 from typing import Dict, Any
 from fastapi import Response
-from app.core.verify_session import create_session, set_cookie, verify_code_for_session, delete_session, clear_cookie, get_session
+from app.core.verify_session import (
+    create_session, set_cookie, verify_code_for_session, delete_session, clear_cookie, get_session,
+    COOKIE_SAMESITE, COOKIE_SECURE, COOKIE_PATH_API, COOKIE_DOMAIN
+)
+import os
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -75,7 +79,7 @@ class AuthService:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to send verification email. Please try again."
-            )
+            ) from e
 
         # Set HttpOnly cookie with the opaque session id
         set_cookie(response, sid, purpose="register")
@@ -96,16 +100,17 @@ class AuthService:
         sess = get_session(vsid)
         if not sess:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Session expired")
-        email = sess["email"]
+        email = sess.get("email") or ""
+        if not email:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Session invalid")
 
         # Retrieve temporary user data
         user_data = get_temp_user(email)
         if not user_data:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST, 
-                detail="User data expired or missing. Please restart registration process."
-            )
-        
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="User data expired or missing. Please restart registration process.")
+
         # Create user in database
         try:
             user = User(**user_data)
@@ -117,19 +122,18 @@ class AuthService:
             await session.rollback()
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to create user account. Please try again."
-            )
-        
+                detail="Failed to create user account. Please try again.") from e
+
         # Send success email
         try:
             send_email(
                 to_email=email,
                 subject="Welcome to GroupifyAssist!",
-                body=registration_success(year=2025, email=email)
-            )
+                body=registration_success(year=2025, email=email))
         except Exception:
             # Don't fail registration if success email fails
             pass
+
         # Clean up temporary data and cookie
         delete_temp_user(email)
         delete_session(vsid)
@@ -138,7 +142,7 @@ class AuthService:
         return {"message": "User verified and registered successfully"}
     
     @staticmethod
-    async def login_user(request: LoginRequest, session: AsyncSession) -> Dict[str, Any]:
+    async def login_user(request: LoginRequest, session: AsyncSession, response: Response | None = None) -> Dict[str, Any]:
         """
         Authenticate user and return access token
         """
@@ -167,6 +171,23 @@ class AuthService:
         
         # Generate access token
         access_token = create_access_token(data={"sub": user.email})
+
+        # Optionally set HttpOnly access token cookie for cross-site auth
+        if response is not None:
+            same_site = "lax" if COOKIE_SAMESITE not in {"lax", "none", "strict"} else COOKIE_SAMESITE
+            secure_flag = COOKIE_SECURE or (same_site == "none")
+            auth_cookie_name = os.getenv("AUTH_COOKIE_NAME", "access_token")
+            max_age = int(ACCESS_TOKEN_EXPIRE_MINUTES) * 60 if str(ACCESS_TOKEN_EXPIRE_MINUTES).isdigit() else 1800
+            response.set_cookie(
+                key=auth_cookie_name,
+                value=access_token,
+                max_age=max_age,
+                path=COOKIE_PATH_API,
+                secure=secure_flag,
+                httponly=True,
+                samesite=("none" if same_site == "none" else ("strict" if same_site == "strict" else "lax")),
+                domain=COOKIE_DOMAIN if COOKIE_DOMAIN else None,
+            )
         
         return {
             "access_token": access_token,
@@ -189,7 +210,7 @@ class AuthService:
         sess = get_session(vsid)
         if not sess:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Session expired")
-        email = sess["email"]
+        email = sess.get("email") or ""
         # Check if user already exists
         existing_user_query = await session.exec(select(User).where(User.email == email))
         existing_user = existing_user_query.first()
@@ -225,7 +246,7 @@ class AuthService:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to send verification email. Please try again."
-            )
+            ) from e
         # Update cookie
         set_cookie(response, new_vsid, purpose="register")
         
@@ -239,7 +260,7 @@ class AuthService:
         if not sess:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Session expired")
         return {
-            "email_masked": mask_email(sess["email"]),
+            "email_masked": mask_email(sess.get("email", "")),
             "purpose": sess.get("purpose"),
         }
 
@@ -284,7 +305,7 @@ class AuthService:
         sess = get_session(vsid)
         if not sess:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Session expired")
-        email = sess["email"]
+        email = sess.get("email") or ""
         code = generate_code()
         delete_session(vsid)
         new_vsid = create_session(email=email, purpose="reset", code=code)
@@ -294,8 +315,8 @@ class AuthService:
                 subject="Reset your password - GroupifyAssist",
                 body=registration_message(code=code, year=2025),
             )
-        except Exception:
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to resend code.")
+        except Exception as exc:
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to resend code.") from exc
         set_cookie(response, new_vsid, purpose="reset")
         return {"message": "New code sent."}
 
@@ -306,7 +327,7 @@ class AuthService:
         sess = get_session(vsid)
         if not sess:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Session expired")
-        email = sess["email"]
+        email = sess.get("email") or ""
         # Update password
         user_query = await session.exec(select(User).where(User.email == email))
         user = user_query.first()
@@ -316,9 +337,9 @@ class AuthService:
             user.password = pwd_context.hash(new_password)
             session.add(user)
             await session.commit()
-        except Exception:
+        except Exception as exc:
             await session.rollback()
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to reset password")
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to reset password") from exc
         delete_session(vsid)
         clear_cookie(response, purpose="reset")
         return {"message": "Password reset successfully"}
@@ -377,6 +398,6 @@ class AuthService:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to update password. Please try again."
-            )
+            ) from e
         
         return {"message": "Password changed successfully"}
