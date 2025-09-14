@@ -1,6 +1,14 @@
 from fastapi import FastAPI, Depends
 import os
+import sys
+from pathlib import Path
 from fastapi.middleware.cors import CORSMiddleware
+
+# Ensure project root is on sys.path when executed via file path (e.g., Render)
+_HERE = Path(__file__).resolve()
+_ROOT = _HERE.parent.parent
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
 
 # from core.database import init_db
 from app.routes import user, group_session, selection_session, export, debug, dashboard, realtime, settings
