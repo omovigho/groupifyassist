@@ -3,10 +3,10 @@ import os
 from fastapi.middleware.cors import CORSMiddleware
 
 # from core.database import init_db
-from routes import user, group_session, selection_session, export, debug, dashboard, realtime, settings
-from routes import join_resolver
-from models.user import User
-from core.dependencies import get_current_user
+from app.routes import user, group_session, selection_session, export, debug, dashboard, realtime, settings
+from app.routes import join_resolver
+from app.models.user import User
+from app.core.dependencies import get_current_user
 #, session, member, group
 #app = FastAPI(title="GroupifyAssist API")
 

@@ -7,14 +7,8 @@ from datetime import datetime, timedelta, timezone
 from typing import Literal, Optional, TypedDict
 
 from fastapi import Response
-
-# Support both "app." package imports (when run as a package) and local relative imports
-try:  # pragma: no cover - import resolution environment dependent
-    from app.core.cache import redis  # type: ignore
-    from app.core.security import hash_verification_code  # type: ignore
-except Exception:  # fallback when executed without package context
-    from .cache import redis  # type: ignore
-    from .security import hash_verification_code  # type: ignore
+from app.core.cache import redis
+from app.core.security import hash_verification_code
 
 
 PURPOSE = Literal["register", "reset"]

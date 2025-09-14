@@ -1,12 +1,12 @@
 # app/routes/auth.py
-from fastapi import APIRouter, HTTPException, status, Depends, Response, Cookie
+from fastapi import APIRouter, Depends, Response, Cookie
 from app.core.database import SessionDep
 from app.core.dependencies import get_current_user
 from app.models.user import User
 from app.services.user_service import AuthService
 from app.schemas.user import (
-    RegisterRequest, RegisterResponse, RegistrationVerificationRequest,
-    LoginRequest, LoginResponse, ResendVerificationRequest, 
+    RegisterRequest,
+    LoginRequest, LoginResponse,
     ChangePasswordRequest, UserProfileResponse, VerificationCodeRequest,
     ForgotPasswordStartRequest, ForgotPasswordResetRequest
 )
