@@ -8,8 +8,13 @@ from typing import Literal, Optional, TypedDict
 
 from fastapi import Response
 
-from .cache import redis
-from .security import hash_verification_code
+# Support both "app." package imports (when run as a package) and local relative imports
+try:  # pragma: no cover - import resolution environment dependent
+    from app.core.cache import redis  # type: ignore
+    from app.core.security import hash_verification_code  # type: ignore
+except Exception:  # fallback when executed without package context
+    from .cache import redis  # type: ignore
+    from .security import hash_verification_code  # type: ignore
 
 
 PURPOSE = Literal["register", "reset"]
@@ -27,8 +32,22 @@ class VerifySession(TypedDict, total=False):
 SESSION_TTL_SECONDS = int(os.getenv("VERIFY_SESSION_TTL", "900"))  # 15 minutes
 COOKIE_NAME = os.getenv("VERIFY_SESSION_COOKIE", "vsid")
 COOKIE_PATH_API = "/api"  # scope to backend API routes so cookie is sent with API calls
-COOKIE_SECURE = os.getenv("COOKIE_SECURE", "false").lower() == "true"  # default false for localhost dev
-COOKIE_SAMESITE = os.getenv("COOKIE_SAMESITE", "lax").lower()  # lax | none | strict
+
+# Heuristic to detect production hosting environments
+_ENV = os.getenv("ENV", os.getenv("ENVIRONMENT", "")).lower()
+_IS_PROD = (
+    _ENV in {"prod", "production"}
+    or os.getenv("VERCEL", "") == "1"
+    or os.getenv("RENDER", "").lower() == "true"
+    or os.getenv("RAILWAY_ENVIRONMENT", "") != ""
+)
+
+# Defaults: dev uses lax/insecure, prod uses none/secure (required for cross-site cookies)
+COOKIE_SECURE = os.getenv("COOKIE_SECURE", "true" if _IS_PROD else "false").lower() == "true"
+COOKIE_SAMESITE = os.getenv("COOKIE_SAMESITE", "none" if _IS_PROD else "lax").lower()  # lax | none | strict
+
+# Optional cookie domain override (e.g., api.example.com). Leave unset to let the browser default.
+COOKIE_DOMAIN = os.getenv("VERIFY_COOKIE_DOMAIN")
 
 
 def _session_key(sid: str) -> str:
@@ -65,7 +84,7 @@ def get_session(sid: str) -> Optional[VerifySession]:
         return None
     try:
         return json.loads(raw)
-    except Exception:
+    except (json.JSONDecodeError, TypeError):
         return None
 
 
@@ -82,8 +101,8 @@ def update_session(sid: str, data: dict) -> None:
         # Upstash returns milliseconds; if -1 or -2, default to SESSION_TTL_SECONDS
         ex = max(1, int(ttl / 1000)) if isinstance(ttl, int) and ttl > 0 else SESSION_TTL_SECONDS
         redis.set(key, json.dumps(obj), ex=ex)
-    except Exception:
-        pass
+    except (json.JSONDecodeError, TypeError, ValueError):
+        return
 
 
 def delete_session(sid: str) -> None:
@@ -91,20 +110,25 @@ def delete_session(sid: str) -> None:
 
 
 def set_cookie(response: Response, sid: str, purpose: PURPOSE) -> None:
+    _ = purpose  # silence unused param; kept for future purpose-based scoping
     path = COOKIE_PATH_API
     same_site = "lax" if COOKIE_SAMESITE not in {"lax", "none", "strict"} else COOKIE_SAMESITE
+    # Browsers require Secure when SameSite=None; enforce at runtime to avoid silent drops
+    secure_flag = COOKIE_SECURE or (same_site == "none")
     response.set_cookie(
         key=COOKIE_NAME,
         value=sid,
         max_age=SESSION_TTL_SECONDS,
         path=path,
-        secure=COOKIE_SECURE,
+        secure=secure_flag,
         httponly=True,
-        samesite="None" if same_site == "none" else ("Strict" if same_site == "strict" else "Lax"),
+    samesite="none" if same_site == "none" else ("strict" if same_site == "strict" else "lax"),
+        domain=COOKIE_DOMAIN if COOKIE_DOMAIN else None,
     )
 
 
 def clear_cookie(response: Response, purpose: PURPOSE) -> None:
+    _ = purpose  # silence unused param; kept for future purpose-based scoping
     response.delete_cookie(key=COOKIE_NAME, path=COOKIE_PATH_API)
 
 
