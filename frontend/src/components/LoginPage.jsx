@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useState } from 'react';
@@ -10,6 +10,7 @@ const LoginPage = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const navigate = useNavigate();
 
   const onSubmit = async (e) => {
     e.preventDefault();
@@ -24,7 +25,8 @@ const LoginPage = () => {
       setSuccess('Login successful');
       setTimeout(() => {
         setSuccess('');
-        window.location.replace('/dashboard');
+        // Use client-side navigation to avoid a server 404 on SPA routes
+        navigate('/dashboard', { replace: true });
       }, 500);
     } catch (err) {
   const msg = err?.response?.data?.detail || 'Login failed. Please check your credentials.';
