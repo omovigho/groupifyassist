@@ -7,7 +7,7 @@ asyncpg
 python-dotenv
 passlib
 upstash_redis
-bcrypt
+bcrypt<4.1
 passlib[bcrypt]
 python-jose[cryptography]
 APScheduler
