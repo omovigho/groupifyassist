@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Users, Target, FileDown, Settings } from 'lucide-react';
+import { LayoutDashboard, Users, Target, FileDown, Settings, LogOut } from 'lucide-react';
 
 const Sidebar = () => {
   const items = [
@@ -7,8 +7,8 @@ const Sidebar = () => {
     { to: '/dashboard/groups', label: 'Groups', icon: Users },
     { to: '/dashboard/selections', label: 'Selections', icon: Target },
     { to: '/dashboard/exports', label: 'Exports', icon: FileDown },
-  { to: '/dashboard/settings', label: 'Settings', icon: Settings },
-  { to: '/logout', label: 'Logout', icon: Settings },
+    { to: '/dashboard/settings', label: 'Settings', icon: Settings },
+    { to: '/logout', label: 'Logout', icon: LogOut },
   ];
 
   return (
