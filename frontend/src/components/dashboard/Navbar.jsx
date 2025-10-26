@@ -11,7 +11,7 @@ const Navbar = () => {
     {to: '/dashboard/groups', label: 'Groups'},
     {to: '/dashboard/selections', label: 'Selections'},
   {to: '/dashboard/selections/make', label: 'Make Selection'},
-    {to: '/dashboard/exports', label: 'Reports'},
+  {to: '/dashboard/exports', label: 'Exports'},
   {to: '/dashboard/settings', label: 'Settings'},
   {to: '/logout', label: 'Logout'},
   ];
