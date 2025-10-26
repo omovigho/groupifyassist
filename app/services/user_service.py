@@ -2,14 +2,19 @@
 from fastapi import HTTPException, status
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel import select
-from passlib.context import CryptContext
 from app.models.user import User
 from app.core.cache import store_temp_user, get_temp_user, delete_temp_user
 from app.utils.email_utils import send_email, generate_code
 from app.utils.email_template import registration_message, registration_success
 from app.schemas.user import RegisterRequest
 from app.schemas.user import LoginRequest
-from app.core.security import verify_password, create_access_token, mask_email, ACCESS_TOKEN_EXPIRE_MINUTES
+from app.core.security import (
+    verify_password,
+    hash_password,
+    create_access_token,
+    mask_email,
+    ACCESS_TOKEN_EXPIRE_MINUTES,
+)
 from typing import Dict, Any
 from fastapi import Response
 from app.core.verify_session import (
@@ -17,8 +22,6 @@ from app.core.verify_session import (
     COOKIE_SAMESITE, COOKIE_SECURE, COOKIE_PATH_API, COOKIE_DOMAIN
 )
 import os
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 class AuthService:
     @staticmethod
@@ -55,7 +58,7 @@ class AuthService:
         # Store user data temporarily (server-side only)
         user_data = {
             "email": email,
-            "password": pwd_context.hash(request.password),  # Hash password immediately
+            "password": hash_password(request.password),  # Hash password immediately
             "country": request.country
         }
         store_temp_user(email, user_data, timeout=600)  # 10 minutes timeout
@@ -334,7 +337,7 @@ class AuthService:
         if not user:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
         try:
-            user.password = pwd_context.hash(new_password)
+            user.password = hash_password(new_password)
             session.add(user)
             await session.commit()
         except Exception as exc:
@@ -390,7 +393,7 @@ class AuthService:
         
         # Update password
         try:
-            user.password = pwd_context.hash(new_password)
+            user.password = hash_password(new_password)
             session.add(user)
             await session.commit()
         except Exception as e:
