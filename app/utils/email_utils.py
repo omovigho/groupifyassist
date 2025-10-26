@@ -9,6 +9,9 @@ from starlette.status import HTTP_500_INTERNAL_SERVER_ERROR
 from app.core.cache import set_cache, get_cache
 from dotenv import load_dotenv
 from pathlib import Path
+from sendgrid import SendGridAPIClient
+from sendgrid.helpers.mail import Mail, Attachment, FileContent, FileName, FileType, Disposition
+
 
 env_path = Path(__file__).resolve().parents[1] / "config.env"
 load_dotenv(dotenv_path=env_path)
@@ -19,7 +22,7 @@ def generate_code() -> str:
 
 
 # Send email with subject and body
-def send_email(to_email: str, subject: str, body: str) -> None:
+def send_email5(to_email: str, subject: str, body: str) -> None:
     smtp_server = "smtp.gmail.com"
     smtp_port = 587
     sender_email = os.getenv('USER_MAIL')
@@ -56,3 +59,36 @@ def verify_code(email: str, input_code: str, prefix: str = "reset_code") -> bool
     key = f"{prefix}_{email}"
     stored_code = get_cache(key)
     return stored_code == input_code
+
+
+sendgrid_key = os.getenv("SENDGRID_API_KEY")
+
+# Send email with subject and body
+def send_email(
+    to_email: str,
+    subject: str,
+    body: str
+) -> None:
+    sender_email = os.getenv('USER_MAIL')
+
+    # Create the email message with HTML content
+    message = Mail(
+        from_email=sender_email,
+        to_emails=to_email,
+        subject=subject,
+        html_content=body
+    )
+
+    # Send the email using SendGrid API
+    try:
+        sg = SendGridAPIClient(sendgrid_key)
+        response = sg.send(message)
+        # Optional: check for non-2xx status code
+        if not (200 <= response.status_code < 300):
+            raise Exception(f"SendGrid API error: {response.status_code} - {response.body}")
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to send email: {e}"
+        ) from e
