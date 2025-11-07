@@ -19,7 +19,8 @@ UPSTASH_REDIS_URL = os.getenv("UPSTASH_REDIS_URL")
 UPSTASH_REDIS_TOKEN = os.getenv("UPSTASH_REDIS_TOKEN")
 
 # Initialize Redis client
-redis = Redis(url=UPSTASH_REDIS_URL, token=UPSTASH_REDIS_TOKEN)
+redis = Redis(url=UPSTASH_REDIS_URL)
+token=UPSTASH_REDIS_TOKEN
 
 # Set a value with expiration time (in seconds)
 def set_cache(key: str, value: str, timeout: int = 180):
